@@ -1,6 +1,6 @@
 Program dummy_main
 
-  Use distributed_matrices_module
+  Use distributed_matrix_module
 
   Implicit None
   
