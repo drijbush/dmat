@@ -17,6 +17,12 @@ Module distributed_matrix_module
      Procedure :: diag => real_distributed_matrix_diag
   End type real_distributed_matrix
 
+  Type, Extends( distributed_matrix_ops ), Public :: complex_distributed_matrix
+     Complex( wp ), Dimension( : ), Allocatable :: data
+   Contains
+     Procedure :: diag => complex_distributed_matrix_diag
+  End type complex_distributed_matrix
+
   Private  
 
   Abstract Interface
@@ -38,5 +44,12 @@ Contains
     Class( distributed_matrix_ops  ), Intent(   Out ) :: Q
     Real( wp ), Dimension( : )      , Intent(   Out ) :: E
   End Subroutine real_distributed_matrix_diag
+  
+  Subroutine complex_distributed_matrix_diag( A, Q, E )
+    Implicit None
+    Class( complex_distributed_matrix ), Intent( In    ) :: A
+    Class( distributed_matrix_ops     ), Intent(   Out ) :: Q
+    Real( wp ), Dimension( : )         , Intent(   Out ) :: E
+  End Subroutine complex_distributed_matrix_diag
   
 End Module distributed_matrix_module
