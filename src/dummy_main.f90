@@ -1,6 +1,6 @@
 Program dummy_main
 
-  Use distributed_matrix_module
+  Use k_point_matrix_module
 
   Implicit None
   
