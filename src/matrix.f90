@@ -1,23 +1,23 @@
 Module distributed_matrix_module
 
-  Use numbers_module, Only : wp
+  Use numbers_module, Only : wp 
+  Use mapping_module, Only : mapping, mapping_get_data, mapping_get_global_n_row
   
   Implicit None
 
-  Type, Abstract, Public :: distributed_matrix_ops
-     Integer, Dimension( : ), Allocatable, Private :: descriptor
-     Integer                             , Private :: communicator
+  Type, Abstract, Public :: distributed_matrix
+     Type( mapping ), Private :: matrix_map
    Contains
      Procedure( diag_interface ), Deferred :: diag
-  End Type distributed_matrix_ops
+  End Type distributed_matrix
 
-  Type, Extends( distributed_matrix_ops ), Public :: real_distributed_matrix
+  Type, Extends( distributed_matrix ), Public :: real_distributed_matrix
      Real( wp ), Dimension( : ), Allocatable, Private :: data
    Contains
      Procedure  :: diag => real_distributed_matrix_diag
   End Type real_distributed_matrix
 
-  Type, Extends( distributed_matrix_ops ), Public :: complex_distributed_matrix
+  Type, Extends( distributed_matrix ), Public :: complex_distributed_matrix
      Complex( wp ), Dimension( : ), Allocatable, Private :: data
    Contains
      Procedure :: diag => complex_distributed_matrix_diag
@@ -27,12 +27,12 @@ Module distributed_matrix_module
 
   Abstract Interface
      Subroutine diag_interface( A, Q, E )
-       Import :: distributed_matrix_ops
+       Import :: distributed_matrix
        Import :: wp
        Implicit None
-       Class( distributed_matrix_ops ),              Intent( In    ) :: A
-       Class( distributed_matrix_ops ), Allocatable, Intent(   Out ) :: Q
-       Real( wp ), Dimension( : )     , Allocatable, Intent(   Out ) :: E
+       Class( distributed_matrix ),              Intent( In    ) :: A
+       Class( distributed_matrix ), Allocatable, Intent(   Out ) :: Q
+       Real( wp ), Dimension( : ) , Allocatable, Intent(   Out ) :: E
      End Subroutine diag_interface
   End Interface
 
@@ -47,7 +47,7 @@ Contains
     Implicit None
 
     Class( real_distributed_matrix ),              Intent( In    ) :: A
-    Class( distributed_matrix_ops  ), Allocatable, Intent(   Out ) :: Q
+    Class( distributed_matrix      ), Allocatable, Intent(   Out ) :: Q
     Real( wp ), Dimension( : )      , Allocatable, Intent(   Out ) :: E
 
     Integer :: n
@@ -55,7 +55,8 @@ Contains
     Allocate( Q, Source = A )
 
     ! Want to change to function geting things from descriptor eventually
-    n = A%descriptor( desc_n )
+    ! When write mappings properly belongs in there
+    Call mapping_get_data( A%matrix_map, mapping_get_global_n_row, n )
     
     Allocate( E( 1:n ) )
 
@@ -68,7 +69,7 @@ Contains
     Implicit None
 
     Class( complex_distributed_matrix ),              Intent( In    ) :: A
-    Class( distributed_matrix_ops     ), Allocatable, Intent(   Out ) :: Q
+    Class( distributed_matrix         ), Allocatable, Intent(   Out ) :: Q
     Real( wp ), Dimension( : )         , Allocatable, Intent(   Out ) :: E
 
     Integer :: n
@@ -76,10 +77,11 @@ Contains
     Allocate( Q, Source = A )
 
     ! Want to change to function geting things from descriptor eventually
-    n = A%descriptor( desc_n )
+    ! When write mappings properly belongs in there
+    Call mapping_get_data( A%matrix_map, mapping_get_global_n_row, n )
     
     Allocate( E( 1:n ) )
 
   End Subroutine complex_distributed_matrix_diag
-  
+
 End Module distributed_matrix_module

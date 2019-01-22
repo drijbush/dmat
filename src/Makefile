@@ -1,8 +1,8 @@
 PROG =	dmat
 
-SRCS =	dummy_main.f90 k_point_matrix.f90 matrix.f90 numbers.f90
+SRCS =	dummy_main.f90 k_point_matrix.f90 mapping.f90 matrix.f90 numbers.f90
 
-OBJS =	dummy_main.o k_point_matrix.o matrix.o numbers.o
+OBJS =	dummy_main.o k_point_matrix.o mapping.o matrix.o numbers.o
 
 LIBS =	
 
@@ -29,4 +29,4 @@ clean:
 
 dummy_main.o: k_point_matrix.o
 k_point_matrix.o: matrix.o numbers.o
-matrix.o: numbers.o
+matrix.o: mapping.o numbers.o
