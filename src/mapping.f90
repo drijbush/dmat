@@ -2,38 +2,37 @@ Module mapping_module
 
   Implicit None
 
+  Integer, Parameter, Private :: INVALID = -1
+
   Type, Public :: mapping
-     Integer                             , Private :: communicator
-     Integer, Dimension( : ), Allocatable, Private :: descriptor
+     Integer                  , Private :: communicator
+     Integer, Dimension( 1:9 ), Private :: descriptor
   End Type mapping
+
+  Type( mapping ), Public :: mapping_base_map = mapping( communicator = INVALID, descriptor = INVALID )
 
   Integer, Parameter, Public :: mapping_get_global_n_row = 3
   Integer, Parameter, Public :: mapping_get_global_n_col = 4
 
   Public :: mapping_init
+  Public :: mapping_finalise
   Public :: mapping_get_data
   
   Private
 
 Contains
 
-  Subroutine mapping_init( n, bfac, comm, map )
+  Subroutine mapping_init( comm )
 
-    Integer        , Intent( In    ) :: n
-    Integer        , Intent( In    ) :: bfac
-    Integer        , Intent( In    ) :: comm
-    Type( mapping ), Intent(   Out ) :: map
+    Integer, Intent( In ) :: comm
 
-    map%communicator = comm
+    Integer :: base_context
     
-    Allocate( map%descriptor( 1:9 ) )
-    ! At some point make consistent with parameters above
-    map%descriptor( 1 ) = 1
-    map%descriptor( 3 ) = n
-    map%descriptor( 4 ) = n
-    map%descriptor( 5 ) = bfac
-    map%descriptor( 6 ) = bfac
+    mapping_base_map%communicator = comm
 
+    ! Get base context here ...
+    base_context = INVALID - 1
+    mapping_base_map%descriptor( 2 ) = base_context
     
   End Subroutine mapping_init
 
@@ -60,5 +59,9 @@ Contains
     End Select
     
   End Subroutine mapping_get_data
+
+  Subroutine mapping_finalise
+    mapping_base_map = mapping( communicator = INVALID, descriptor = INVALID )
+  End Subroutine mapping_finalise
 
 End Module mapping_module
