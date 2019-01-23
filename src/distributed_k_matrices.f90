@@ -12,5 +12,9 @@ Module distributed_k_module
   Type, Public :: distributed_k_vectors
      Type( k_point_matrix ), Dimension( : ), Allocatable :: k_points
   End Type distributed_k_vectors
+
+
+  ! a) Set up base matrix which is 1 matrix across all
+  ! b) Provide splits
   
 End Module distributed_k_module

@@ -6,6 +6,8 @@ Module k_point_matrix_module
   Implicit None
 
   Type, Public :: k_point_matrix
+     Integer                   :: spin
+     Integer, Dimension( 1:3 ) :: k_point
      Class( distributed_matrix ), Allocatable, Private :: matrix
   End Type k_point_matrix
 
@@ -23,7 +25,6 @@ Contains
     Allocate( complex_distributed_matrix :: a%matrix )
     Call a%matrix%diag( b, a%evals )
   End Subroutine testit
-  
 
 End Module k_point_matrix_module
 

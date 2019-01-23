@@ -1,16 +1,18 @@
 PROG =	dmat
 
-SRCS =	dummy_main.f90 k_point_matrix.f90 mapping.f90 matrix.f90 numbers.f90
+SRCS =	distributed_k_matrices.f90 dummy_main.f90 k_point_matrix.f90 \
+	mapping.f90 matrix.f90 numbers.f90
 
-OBJS =	dummy_main.o k_point_matrix.o mapping.o matrix.o numbers.o
+OBJS =	distributed_k_matrices.o dummy_main.o k_point_matrix.o mapping.o \
+	matrix.o numbers.o
 
 LIBS =	
 
 CC = cc
 CFLAGS = -O
-FC = gfortran
+FC = mpif90
 FFLAGS = -std=f2003 -fcheck=all -O -Wall -Wextra
-F90 = gfortran
+F90 = mpif90
 F90FLAGS = -std=f2003 -fcheck=all -O -Wall -Wextra
 LDFLAGS = 
 
@@ -27,6 +29,8 @@ clean:
 .f90.o:
 	$(F90) $(F90FLAGS) -c $<
 
-dummy_main.o: k_point_matrix.o
+distributed_k_matrices.o: k_point_matrix.o numbers.o
+dummy_main.o: k_point_matrix.o mapping.o
 k_point_matrix.o: matrix.o numbers.o
+mapping.o: 
 matrix.o: mapping.o numbers.o
