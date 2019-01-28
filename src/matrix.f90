@@ -2,12 +2,12 @@ Module distributed_matrix_module
 
   Use numbers_module, Only : wp 
 !!$  Use mapping_module, Only : mapping, mapping_get_data, mapping_get_global_n_row
-  Use mapping_module, Only : mapping
+  Use proc_mapping_module, Only : proc_mapping
   
   Implicit None
 
   Type, Abstract, Public :: distributed_matrix
-     Type( mapping ), Private :: matrix_map
+     Type( proc_mapping ), Private :: matrix_map
    Contains
      Procedure( diag_interface ), Deferred :: diag
   End Type distributed_matrix

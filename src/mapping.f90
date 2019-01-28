@@ -1,4 +1,4 @@
-Module mapping_module
+Module proc_mapping_module
 
   Use mpi
 
@@ -6,33 +6,33 @@ Module mapping_module
 
   Integer, Parameter, Private :: INVALID = -1
 
-  Type, Public :: mapping
+  Type, Public :: proc_mapping
      Character( Len = 128 )   , Private :: name
      Integer                  , Private :: communicator
 !!$     Integer, Dimension( 1:9 ), Private :: descriptor
      Integer                  , Private :: parent_communicator
 !!$     Integer, Dimension( 1:9 ), Private :: parent_descriptor
    Contains
-     Procedure :: set   => set_mapping
-     Procedure :: print => print_mapping
-     Procedure :: split => split_mapping
-  End Type mapping
+     Procedure :: set   => set_proc_mapping
+     Procedure :: print => print_proc_mapping
+     Procedure :: split => split_proc_mapping
+  End Type proc_mapping
 
-  Type( mapping ), Public :: mapping_base_map = mapping( name = 'BASE_MAP', &
+  Type( proc_mapping ), Public :: proc_mapping_base = proc_mapping( name = 'BASE_MAP', &
        communicator = MPI_COMM_NULL, parent_communicator = MPI_COMM_NULL )      
 
-!!$  Integer, Parameter, Public :: mapping_get_global_n_row = 3
-!!$  Integer, Parameter, Public :: mapping_get_global_n_col = 4
+!!$  Integer, Parameter, Public :: proc_mapping_get_global_n_row = 3
+!!$  Integer, Parameter, Public :: proc_mapping_get_global_n_col = 4
 
-  Public :: mapping_init
-  Public :: mapping_finalise
-!!$  Public :: mapping_get_data
+  Public :: proc_mapping_init
+  Public :: proc_mapping_finalise
+!!$  Public :: proc_mapping_get_data
   
   Private
 
 Contains
 
-  Subroutine mapping_init( comm )
+  Subroutine proc_mapping_init( comm )
 
     Integer, Intent( In ) :: comm
 
@@ -46,11 +46,11 @@ Contains
     parent_communicator = MPI_COMM_NULL
 !!$    parent_descriptor   = INVALID
 
-    Call mapping_base_map%set( 'BASE_MAP', comm, parent_communicator )
+    Call proc_mapping_base%set( 'BASE_MAP', comm, parent_communicator )
     
-  End Subroutine mapping_init
+  End Subroutine proc_mapping_init
 
-  Subroutine mapping_finalise
+  Subroutine proc_mapping_finalise
     
     Integer :: communicator
     Integer :: parent_communicator
@@ -59,15 +59,15 @@ Contains
 
     parent_communicator = MPI_COMM_NULL
 
-    Call mapping_base_map%set( 'BASE_MAP', communicator, parent_communicator )
+    Call proc_mapping_base%set( 'BASE_MAP', communicator, parent_communicator )
 
-  End Subroutine mapping_finalise
+  End Subroutine proc_mapping_finalise
 
-  Subroutine print_mapping( map )
+  Subroutine print_proc_mapping( map )
 
     Use mpi
     
-    Class( mapping ), Intent( In ) :: map
+    Class( proc_mapping ), Intent( In ) :: map
 
     Integer :: rank, nproc, nproc_parent
     Integer :: error
@@ -75,28 +75,28 @@ Contains
     Call mpi_comm_size( map%communicator, nproc, error )
     Call mpi_comm_rank( map%communicator, rank , error )
     If( rank == 0 ) Then
-       Write( *, '( a, a, a, i0 )' ) 'Size of mapping ', Trim( Adjustl( map%name ) ), ' is ', nproc
+       Write( *, '( a, a, a, i0 )' ) 'Size of proc_mapping ', Trim( Adjustl( map%name ) ), ' is ', nproc
        ! Catch base map - can probably do better
        If( map%parent_communicator /= MPI_COMM_NULL ) Then
           Call mpi_comm_size( map%communicator, nproc_parent, error )
-          Write( *, '( a, a, a, i0 )' ) 'Size of parent of mapping ', Trim( Adjustl( map%name ) ), ' is ', nproc_parent
+          Write( *, '( a, a, a, i0 )' ) 'Size of parent of proc_mapping ', Trim( Adjustl( map%name ) ), ' is ', nproc_parent
        End If
     End If
     
-  End Subroutine print_mapping
+  End Subroutine print_proc_mapping
 
-  Subroutine split_mapping( map, weights, split_name, split_map, i_hold )
+  Subroutine split_proc_mapping( map, weights, split_name, split_map, i_hold )
 
     ! Totally hacked together at the moment - need to think of a better splitting algorithm -
     ! maybe sort weights and then grab proc in decreasing size and use that to grab procs
 
     Use mpi
 
-    Class( mapping )                                    , Intent( In    ) :: map
-    Integer, Dimension( : )                             , Intent( In    ) :: weights
-    Character( Len = * )                                , Intent( In    ) :: split_name
-    Class( mapping )       , Dimension( : ), Allocatable, Intent(   Out ) :: split_map
-    Integer, Dimension( : ),                 Allocatable, Intent(   Out ) :: i_hold
+    Class( proc_mapping )                                    , Intent( In    ) :: map
+    Integer, Dimension( : )                                  , Intent( In    ) :: weights
+    Character( Len = * )                                     , Intent( In    ) :: split_name
+    Class( proc_mapping )       , Dimension( : ), Allocatable, Intent(   Out ) :: split_map
+    Integer, Dimension( : ),                      Allocatable, Intent(   Out ) :: i_hold
 
     Integer :: base_cost
     Integer :: rank, nproc
@@ -149,11 +149,11 @@ Contains
     
     Call split_map( 1 )%set( split_name, split_comm, map%communicator)
 
-  End Subroutine split_mapping
+  End Subroutine split_proc_mapping
 
-  Subroutine set_mapping( map, name, communicator, parent_communicator )
+  Subroutine set_proc_mapping( map, name, communicator, parent_communicator )
 
-    Class( mapping )       , Intent(   Out ) :: map
+    Class( proc_mapping )       , Intent(   Out ) :: map
     Character( Len = * )   , Intent( In    ) :: name
     Integer                , Intent( In    ) :: communicator
     Integer                , Intent( In    ) :: parent_communicator
@@ -162,6 +162,6 @@ Contains
     map%communicator        = communicator
     map%parent_communicator = parent_communicator
 
-  End Subroutine set_mapping
+  End Subroutine set_proc_mapping
   
-End Module mapping_module
+End Module proc_mapping_module
