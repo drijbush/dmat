@@ -6,9 +6,12 @@ Module matrix_mapping_module
   Implicit None
 
   Type, Extends( proc_mapping ), Public  :: matrix_mapping
+     Integer, Dimension( 1:9 ) :: descriptor
   End type matrix_mapping
   
   Private
+
+!!$  Integer
 
 End Module matrix_mapping_module
  

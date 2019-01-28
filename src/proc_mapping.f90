@@ -9,9 +9,7 @@ Module proc_mapping_module
   Type, Public :: proc_mapping
      Character( Len = 128 )   , Private :: name
      Integer                  , Private :: communicator
-!!$     Integer, Dimension( 1:9 ), Private :: descriptor
      Integer                  , Private :: parent_communicator
-!!$     Integer, Dimension( 1:9 ), Private :: parent_descriptor
    Contains
      Procedure :: set   => set_proc_mapping
      Procedure :: print => print_proc_mapping
@@ -21,12 +19,8 @@ Module proc_mapping_module
   Type( proc_mapping ), Public :: proc_mapping_base = proc_mapping( name = 'BASE_MAP', &
        communicator = MPI_COMM_NULL, parent_communicator = MPI_COMM_NULL )      
 
-!!$  Integer, Parameter, Public :: proc_mapping_get_global_n_row = 3
-!!$  Integer, Parameter, Public :: proc_mapping_get_global_n_col = 4
-
   Public :: proc_mapping_init
   Public :: proc_mapping_finalise
-!!$  Public :: proc_mapping_get_data
   
   Private
 
@@ -36,15 +30,9 @@ Contains
 
     Integer, Intent( In ) :: comm
 
-!!$    Integer, Dimension( 1:9 ) :: descriptor
-!!$    Integer, Dimension( 1:9 ) :: parent_descriptor
-
     Integer :: parent_communicator
-    
-!!$    descriptor = INVALID
 
     parent_communicator = MPI_COMM_NULL
-!!$    parent_descriptor   = INVALID
 
     Call proc_mapping_base%set( 'BASE_MAP', comm, parent_communicator )
     
