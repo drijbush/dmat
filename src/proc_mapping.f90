@@ -141,10 +141,10 @@ Contains
 
   Subroutine set_proc_mapping( map, name, communicator, parent_communicator )
 
-    Class( proc_mapping )       , Intent(   Out ) :: map
-    Character( Len = * )   , Intent( In    ) :: name
-    Integer                , Intent( In    ) :: communicator
-    Integer                , Intent( In    ) :: parent_communicator
+    Class( proc_mapping ), Intent(   Out ) :: map
+    Character( Len = * ) , Intent( In    ) :: name
+    Integer              , Intent( In    ) :: communicator
+    Integer              , Intent( In    ) :: parent_communicator
 
     map%name                = name
     map%communicator        = communicator
