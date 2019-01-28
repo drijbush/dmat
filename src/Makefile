@@ -1,10 +1,10 @@
 PROG =	dmat
 
 SRCS =	distributed_k_matrices.f90 dummy_main.f90 k_point_matrix.f90 \
-	mapping.f90 matrix.f90 numbers.f90
+	matrix.f90 numbers.f90 proc_mapping.f90
 
-OBJS =	distributed_k_matrices.o dummy_main.o k_point_matrix.o mapping.o \
-	matrix.o numbers.o
+OBJS =	distributed_k_matrices.o dummy_main.o k_point_matrix.o matrix.o \
+	numbers.o proc_mapping.o
 
 LIBS =	
 
@@ -30,7 +30,7 @@ clean:
 	$(F90) $(F90FLAGS) -c $<
 
 distributed_k_matrices.o: k_point_matrix.o numbers.o
-dummy_main.o: k_point_matrix.o mapping.o
+dummy_main.o: k_point_matrix.o proc_mapping.o
 k_point_matrix.o: matrix.o numbers.o
-mapping.o: 
-matrix.o: mapping.o numbers.o
+matrix.o: numbers.o proc_mapping.o
+proc_mapping.o: 
