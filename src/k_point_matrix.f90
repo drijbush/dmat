@@ -17,15 +17,6 @@ Module k_point_matrix_module
   
   Private
 
-Contains
-
-  Subroutine testit
-    Type( k_wave_function ) :: a
-    Class( distributed_matrix ), Allocatable :: b
-    Allocate( complex_distributed_matrix :: a%matrix )
-    Call a%matrix%diag( b, a%evals )
-  End Subroutine testit
-
 End Module k_point_matrix_module
 
 

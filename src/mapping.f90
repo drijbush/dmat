@@ -1,5 +1,7 @@
 Module mapping_module
 
+  Use mpi
+
   Implicit None
 
   Integer, Parameter, Private :: INVALID = -1
@@ -7,23 +9,24 @@ Module mapping_module
   Type, Public :: mapping
      Character( Len = 128 )   , Private :: name
      Integer                  , Private :: communicator
-     Integer, Dimension( 1:9 ), Private :: descriptor
+!!$     Integer, Dimension( 1:9 ), Private :: descriptor
      Integer                  , Private :: parent_communicator
-     Integer, Dimension( 1:9 ), Private :: parent_descriptor
+!!$     Integer, Dimension( 1:9 ), Private :: parent_descriptor
    Contains
-     Procedure :: print 
-     Procedure :: split
+     Procedure :: set   => set_mapping
+     Procedure :: print => print_mapping
+     Procedure :: split => split_mapping
   End Type mapping
 
-  Type( mapping ), Public :: mapping_base_map = mapping( name = 'BASE_MAP', communicator = INVALID, descriptor = INVALID, &
-       parent_communicator = INVALID, parent_descriptor = INVALID )      
+  Type( mapping ), Public :: mapping_base_map = mapping( name = 'BASE_MAP', &
+       communicator = MPI_COMM_NULL, parent_communicator = MPI_COMM_NULL )      
 
-  Integer, Parameter, Public :: mapping_get_global_n_row = 3
-  Integer, Parameter, Public :: mapping_get_global_n_col = 4
+!!$  Integer, Parameter, Public :: mapping_get_global_n_row = 3
+!!$  Integer, Parameter, Public :: mapping_get_global_n_col = 4
 
   Public :: mapping_init
   Public :: mapping_finalise
-  Public :: mapping_get_data
+!!$  Public :: mapping_get_data
   
   Private
 
@@ -33,48 +36,34 @@ Contains
 
     Integer, Intent( In ) :: comm
 
-    Integer :: base_context
-    
-    mapping_base_map%communicator = comm
+!!$    Integer, Dimension( 1:9 ) :: descriptor
+!!$    Integer, Dimension( 1:9 ) :: parent_descriptor
 
-    ! Get base context here ...
-    base_context = INVALID - 1
-    mapping_base_map%descriptor( 2 ) = base_context
+    Integer :: parent_communicator
+    
+!!$    descriptor = INVALID
+
+    parent_communicator = MPI_COMM_NULL
+!!$    parent_descriptor   = INVALID
+
+    Call mapping_base_map%set( 'BASE_MAP', comm, parent_communicator )
     
   End Subroutine mapping_init
 
-  Subroutine mapping_get_data( map, what, data )
-
-    ! get out of BLACS descriptor - only so far for
-    ! dense in core matrix, but easily modifiable for other type
-
-    Type( mapping ), Intent( In    ) :: map
-    Integer        , Intent( In    ) :: what
-    Integer        , Intent(   Out ) :: data
-
-    Select Case( what )
-
-    Case( mapping_get_global_n_row )
-       data = map%descriptor( 3 )
-    
-    Case( mapping_get_global_n_col )
-       data = map%descriptor( 4 )
-
-    Case Default
-       Stop 'Illegal WHAT in get_mapping_data'
-
-    End Select
-    
-  End Subroutine mapping_get_data
-
   Subroutine mapping_finalise
     
-    mapping_base_map = mapping( name = 'BASE_MAP', communicator = INVALID, descriptor = INVALID, &
-         parent_communicator = INVALID, parent_descriptor = INVALID )      
+    Integer :: communicator
+    Integer :: parent_communicator
+
+    communicator = MPI_COMM_NULL
+
+    parent_communicator = MPI_COMM_NULL
+
+    Call mapping_base_map%set( 'BASE_MAP', communicator, parent_communicator )
 
   End Subroutine mapping_finalise
 
-  Subroutine print( map )
+  Subroutine print_mapping( map )
 
     Use mpi
     
@@ -88,22 +77,26 @@ Contains
     If( rank == 0 ) Then
        Write( *, '( a, a, a, i0 )' ) 'Size of mapping ', Trim( Adjustl( map%name ) ), ' is ', nproc
        ! Catch base map - can probably do better
-       If( map%parent_communicator /= INVALID ) Then
+       If( map%parent_communicator /= MPI_COMM_NULL ) Then
           Call mpi_comm_size( map%communicator, nproc_parent, error )
           Write( *, '( a, a, a, i0 )' ) 'Size of parent of mapping ', Trim( Adjustl( map%name ) ), ' is ', nproc_parent
        End If
     End If
     
-  End Subroutine print
+  End Subroutine print_mapping
 
-  Subroutine split( map, weights, split_map, i_hold )
+  Subroutine split_mapping( map, weights, split_name, split_map, i_hold )
+
+    ! Totally hacked together at the moment - need to think of a better splitting algorithm -
+    ! maybe sort weights and then grab proc in decreasing size and use that to grab procs
 
     Use mpi
 
-    Class( mapping )                    , Intent( In    ) :: map
-    Integer, Dimension( : )             , Intent( In    ) :: weights
-    Class( mapping )                    , Intent(   Out ) :: split_map
-    Integer, Dimension( : ), Allocatable, Intent(   Out ) :: i_hold
+    Class( mapping )                                    , Intent( In    ) :: map
+    Integer, Dimension( : )                             , Intent( In    ) :: weights
+    Character( Len = * )                                , Intent( In    ) :: split_name
+    Class( mapping )       , Dimension( : ), Allocatable, Intent(   Out ) :: split_map
+    Integer, Dimension( : ),                 Allocatable, Intent(   Out ) :: i_hold
 
     Integer :: base_cost
     Integer :: rank, nproc
@@ -121,6 +114,7 @@ Contains
 
     n_split = parent_nproc / base_cost
 
+    ! This needs to be generalised!!!
     If( parent_rank < base_cost * n_split ) Then 
        colour = 0
        rank   = 0 
@@ -133,12 +127,17 @@ Contains
              rank = rank + 1
           End Do
        End Do Outer
+       Allocate( i_hold( 1:1 ) )
+       Allocate( split_map( 1:1 ) )
+       i_hold( 1 ) = i
     Else
        colour = MPI_UNDEFINED
+       Allocate( i_hold( 1:0 ) )
+       Allocate( split_map( 1:0 ) )
     End If
 
     Call mpi_comm_split( map%communicator, colour, 1, split_comm, error )
-    If( colour /= MPI_UNDEFINED ) Then
+    If( split_comm /= MPI_COMM_NULL ) Then
        Call mpi_comm_size( split_comm, nproc, error )
        Call mpi_comm_rank( split_comm, rank , error )
     Else
@@ -147,8 +146,22 @@ Contains
     End If
 
     Write( *, * ) parent_nproc, parent_rank, nproc, rank, colour
-
     
-  End Subroutine split
+    Call split_map( 1 )%set( split_name, split_comm, map%communicator)
 
+  End Subroutine split_mapping
+
+  Subroutine set_mapping( map, name, communicator, parent_communicator )
+
+    Class( mapping )       , Intent(   Out ) :: map
+    Character( Len = * )   , Intent( In    ) :: name
+    Integer                , Intent( In    ) :: communicator
+    Integer                , Intent( In    ) :: parent_communicator
+
+    map%name                = name
+    map%communicator        = communicator
+    map%parent_communicator = parent_communicator
+
+  End Subroutine set_mapping
+  
 End Module mapping_module

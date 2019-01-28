@@ -1,7 +1,8 @@
 Module distributed_matrix_module
 
   Use numbers_module, Only : wp 
-  Use mapping_module, Only : mapping, mapping_get_data, mapping_get_global_n_row
+!!$  Use mapping_module, Only : mapping, mapping_get_data, mapping_get_global_n_row
+  Use mapping_module, Only : mapping
   
   Implicit None
 
@@ -50,15 +51,10 @@ Contains
     Class( distributed_matrix      ), Allocatable, Intent(   Out ) :: Q
     Real( wp ), Dimension( : )      , Allocatable, Intent(   Out ) :: E
 
-    Integer :: n
-
     Allocate( Q, Source = A )
 
-    ! Want to change to function geting things from descriptor eventually
-    ! When write mappings properly belongs in there
-    Call mapping_get_data( A%matrix_map, mapping_get_global_n_row, n )
-    
-    Allocate( E( 1:n ) )
+    ! To stop whinging before implemented
+    Allocate( E( 1:1 ) )
 
   End Subroutine real_distributed_matrix_diag
   
@@ -72,15 +68,9 @@ Contains
     Class( distributed_matrix         ), Allocatable, Intent(   Out ) :: Q
     Real( wp ), Dimension( : )         , Allocatable, Intent(   Out ) :: E
 
-    Integer :: n
-
     Allocate( Q, Source = A )
 
-    ! Want to change to function geting things from descriptor eventually
-    ! When write mappings properly belongs in there
-    Call mapping_get_data( A%matrix_map, mapping_get_global_n_row, n )
-    
-    Allocate( E( 1:n ) )
+    Allocate( E( 1:1 ) )
 
   End Subroutine complex_distributed_matrix_diag
 
