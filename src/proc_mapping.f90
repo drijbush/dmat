@@ -9,11 +9,13 @@ Module proc_mapping_module
   Type, Public :: proc_mapping
      Character( Len = 128 )   , Private :: name
      Integer                  , Private :: communicator
+     ! Probably should turn this into a proc_mapping - will do along the line
      Integer                  , Private :: parent_communicator
    Contains
-     Procedure :: set   => set_proc_mapping
-     Procedure :: print => print_proc_mapping
-     Procedure :: split => split_proc_mapping
+     Procedure :: set      => set_proc_mapping
+     Procedure :: print    => print_proc_mapping
+     Procedure :: split    => split_proc_mapping
+     Procedure :: get_comm => get_comm_proc_mapping
   End Type proc_mapping
 
   Type( proc_mapping ), Public :: proc_mapping_base = proc_mapping( name = 'BASE_MAP', &
@@ -80,11 +82,11 @@ Contains
 
     Use mpi
 
-    Class( proc_mapping )                                    , Intent( In    ) :: map
-    Integer, Dimension( : )                                  , Intent( In    ) :: weights
-    Character( Len = * )                                     , Intent( In    ) :: split_name
-    Class( proc_mapping )       , Dimension( : ), Allocatable, Intent(   Out ) :: split_map
-    Integer, Dimension( : ),                      Allocatable, Intent(   Out ) :: i_hold
+    Class( proc_mapping )                               , Intent( In    ) :: map
+    Integer, Dimension( : )                             , Intent( In    ) :: weights
+    Character( Len = * )                                , Intent( In    ) :: split_name
+    Class( proc_mapping )  , Dimension( : ), Allocatable, Intent(   Out ) :: split_map
+    Integer,                 Dimension( : ), Allocatable, Intent(   Out ) :: i_hold
 
     Integer :: base_cost
     Integer :: rank, nproc
@@ -151,5 +153,15 @@ Contains
     map%parent_communicator = parent_communicator
 
   End Subroutine set_proc_mapping
+
+  Pure Function get_comm_proc_mapping( map ) Result( comm )
+
+    Integer :: comm
+
+    Class( proc_mapping ), Intent( In ) :: map
+
+    comm = map%communicator
+
+  End Function get_comm_proc_mapping
   
 End Module proc_mapping_module

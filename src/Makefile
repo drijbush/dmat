@@ -6,7 +6,7 @@ SRCS =	distributed_k_matrices.f90 dummy_main.f90 k_point_matrix.f90 \
 OBJS =	distributed_k_matrices.o dummy_main.o k_point_matrix.o matrix.o \
 	matrix_mapping.o numbers.o proc_mapping.o
 
-LIBS =	
+LIBS =-lblacs-openmpi -lblacsF77init-openmpi	
 
 CC = cc
 CFLAGS = -O
