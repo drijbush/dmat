@@ -4,8 +4,6 @@ Module proc_mapping_module
 
   Implicit None
 
-  Integer, Parameter, Private :: INVALID = -1
-
   Type, Public :: proc_mapping
      Character( Len = 128 ), Private   :: name
      Integer               , Private   :: communicator
@@ -20,7 +18,7 @@ Module proc_mapping_module
      Generic  , Public  :: split => split_proc_mapping
   End Type proc_mapping
 
-  Type( proc_mapping ), Private, Parameter :: proc_mapping_base_start = proc_mapping( name = 'BASE_MAP', &
+  Type( proc_mapping ), Public, Parameter :: proc_mapping_base_start = proc_mapping( name = 'BASE_MAP', &
        communicator = MPI_COMM_NULL, parent_communicator = MPI_COMM_NULL )      
   Type( proc_mapping ), Public, Protected :: proc_mapping_base = proc_mapping_base_start
 
@@ -28,6 +26,8 @@ Module proc_mapping_module
   Public :: proc_mapping_finalise
   
   Private
+
+  Integer, Parameter, Private :: INVALID = -1
 
 Contains
 
@@ -93,6 +93,8 @@ Contains
     Integer :: error
     Integer :: i, j
 
+    Character( Len = 132 ) :: split_name_labelled
+
     Call mpi_comm_size( map%communicator, parent_nproc, error )
     Call mpi_comm_rank( map%communicator, parent_rank , error )
     
@@ -126,14 +128,13 @@ Contains
     If( split_comm /= MPI_COMM_NULL ) Then
        Call mpi_comm_size( split_comm, nproc, error )
        Call mpi_comm_rank( split_comm, rank , error )
-       Call split_map( 1 )%set( split_name, split_comm, map%communicator)
+       Write( split_name_labelled, ( '( a, 1x, i0 )' ) ) split_name, i_hold( 1 )
+       Call split_map( 1 )%set( split_name_labelled, split_comm, map%communicator)
     Else
        rank  = INVALID
        nproc = INVALID
     End If
 
-    Write( *, * ) parent_nproc, parent_rank, nproc, rank, colour
-    
   End Subroutine split_proc_mapping
 
   Subroutine set_proc_mapping( map, name, communicator, parent_communicator )

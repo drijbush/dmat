@@ -2,7 +2,7 @@ Module matrix_mapping_module
 
   Use numbers_module     , Only : wp
   Use mpi
-  Use proc_mapping_module, Only : proc_mapping
+  Use proc_mapping_module, Only : proc_mapping, proc_mapping_init, proc_mapping_finalise, proc_mapping_base, proc_mapping_base_start
   
   Implicit None
 
@@ -15,21 +15,52 @@ Module matrix_mapping_module
      Generic  , Public  :: set   => set_matrix_mapping
      Generic  , Public  :: split => split_matrix_mapping
   End type matrix_mapping
+
+  Integer, Parameter, Private :: INVALID = -1
+
+  Type( matrix_mapping ), Private, Parameter :: matrix_mapping_base_start = &
+       matrix_mapping( descriptor = [ INVALID, INVALID, INVALID,     &
+                                      INVALID, INVALID, INVALID,     &
+                                      INVALID, INVALID, INVALID ],   &
+                                      proc_mapping =  proc_mapping_base_start )
+  Type( matrix_mapping ), Public, Protected :: matrix_mapping_base = matrix_mapping_base_start
+
+  Public :: matrix_mapping_init
+  Public :: matrix_mapping_finalise
   
   Private
 
   ! What the elements of the descriptor mean
-  Integer, Parameter :: dtype_a = 1 ! descriptor type
-  Integer, Parameter :: ctxt_a  = 2 ! context
-  Integer, Parameter :: m_a     = 3 ! number of global rows
-  Integer, Parameter :: n_a     = 4 ! number of global columns
-  Integer, Parameter :: mb_a    = 5 ! row blocking factor
-  Integer, Parameter :: nb_a    = 6 ! column blocking factor
-  Integer, Parameter :: rsrc_a  = 7 ! first process row which holds a
-  Integer, Parameter :: csrc_a  = 8 ! first process col which golds a
-  Integer, Parameter :: lld_a   = 9 ! leading dimension of LOCAL a
+  Integer, Parameter, Private :: dtype_a = 1 ! descriptor type
+  Integer, Parameter, Private :: ctxt_a  = 2 ! context
+  Integer, Parameter, Private :: m_a     = 3 ! number of global rows
+  Integer, Parameter, Private :: n_a     = 4 ! number of global columns
+  Integer, Parameter, Private :: mb_a    = 5 ! row blocking factor
+  Integer, Parameter, Private :: nb_a    = 6 ! column blocking factor
+  Integer, Parameter, Private :: rsrc_a  = 7 ! first process row which holds a
+  Integer, Parameter, Private :: csrc_a  = 8 ! first process col which golds a
+  Integer, Parameter, Private :: lld_a   = 9 ! leading dimension of LOCAL a
 
 Contains
+
+  Subroutine matrix_mapping_init( comm )
+
+    Integer, Intent( In ) :: comm
+
+    Call proc_mapping_init( comm )
+
+    matrix_mapping_base%descriptor   = INVALID
+    matrix_mapping_base%proc_mapping = proc_mapping_base
+    
+  End Subroutine matrix_mapping_init
+
+  Subroutine matrix_mapping_finalise
+
+    matrix_mapping_base = matrix_mapping_base_start
+    
+    Call proc_mapping_finalise
+    
+  End Subroutine matrix_mapping_finalise
 
   Subroutine print_matrix_mapping( map )
 
@@ -40,7 +71,7 @@ Contains
     
     Call mpi_comm_rank( map%get_comm(), rank, error )
     If( rank == 0 ) Then
-       Write( *, '( a, 9( i0, 1x ) )' ) 'Descriptor for matrix mapping'
+       Write( *, '( a, 9( i0, 1x ) )' ) 'Descriptor for matrix mapping ', map%descriptor
        Call map%proc_mapping%print
     End If
     
@@ -62,6 +93,8 @@ Contains
 
     map%proc_mapping = proc_map
 
+    map%descriptor = INVALID
+    
     map%descriptor( dtype_a ) = 1 ! Dense matrix
 
     Call mpi_comm_size( map%get_comm(), nproc, error )
@@ -94,8 +127,6 @@ Contains
     Call map%proc_mapping%split( weights, split_name, proc_map, i_hold )
 
     Allocate( split_map( 1:Size( proc_map ) ) )
-
-    Write( *, * ) 'wibble'
 
     Do i = 1, Size( split_map )
        Call split_map( i )%set( proc_map( i ) ,                 &
