@@ -9,7 +9,7 @@ Program dummy_main
   Implicit None
 
   Integer, Dimension( : ), Allocatable :: i_hold
-  Class( proc_mapping ), Dimension( : ), Allocatable :: split_map
+  Type( proc_mapping ), Dimension( : ), Allocatable :: split_map
   Integer :: error
 
   Call mpi_init( error )

@@ -95,6 +95,8 @@ Contains
 
     Allocate( split_map( 1:Size( proc_map ) ) )
 
+    Write( *, * ) 'wibble'
+
     Do i = 1, Size( split_map )
        Call split_map( i )%set( proc_map( i ) ,                 &
             map%descriptor( m_a    ), map%descriptor( n_a    ), &

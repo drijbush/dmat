@@ -126,6 +126,7 @@ Contains
     If( split_comm /= MPI_COMM_NULL ) Then
        Call mpi_comm_size( split_comm, nproc, error )
        Call mpi_comm_rank( split_comm, rank , error )
+       Call split_map( 1 )%set( split_name, split_comm, map%communicator)
     Else
        rank  = INVALID
        nproc = INVALID
@@ -133,8 +134,6 @@ Contains
 
     Write( *, * ) parent_nproc, parent_rank, nproc, rank, colour
     
-    Call split_map( 1 )%set( split_name, split_comm, map%communicator)
-
   End Subroutine split_proc_mapping
 
   Subroutine set_proc_mapping( map, name, communicator, parent_communicator )

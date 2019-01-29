@@ -11,10 +11,10 @@ LIBS =-lblacs-openmpi -lblacsF77init-openmpi
 CC = cc
 CFLAGS = -O
 FC = mpif90
-FFLAGS = -std=f2003 -fcheck=all -O -Wall -Wextra
+FFLAGS = -std=f2003 -fcheck=all -O -Wall -Wextra -fbacktrace -g
 F90 = mpif90
-F90FLAGS = -std=f2003 -fcheck=all -O -Wall -Wextra
-LDFLAGS = 
+F90FLAGS = -std=f2003 -fcheck=all -O -Wall -Wextra -fbacktrace -g
+LDFLAGS = -fbacktrace -g 
 
 all: $(PROG)
 
