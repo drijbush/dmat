@@ -6,13 +6,14 @@ Module matrix_mapping_module
   
   Implicit None
 
-  Type, Public  :: matrix_mapping
-     Type( proc_mapping )     , Private :: proc_map
+  Type, Public, Extends( proc_mapping )  :: matrix_mapping
      Integer, Dimension( 1:9 ), Private :: descriptor
    Contains
-     Procedure :: print => print_matrix_mapping
-     Procedure :: set   => set_matrix_mapping
-!!$     Procedure :: split => split_matrix_mapping
+     Procedure, Private :: set_matrix_mapping
+     Procedure, Private :: split_matrix_mapping
+     Procedure, Public  :: print => print_matrix_mapping
+     Generic  , Public  :: set   => set_matrix_mapping
+     Generic  , Public  :: split => split_matrix_mapping
   End type matrix_mapping
   
   Private
@@ -30,24 +31,24 @@ Module matrix_mapping_module
 
 Contains
 
-  Subroutine print_matrix_mapping( matrix_map )
+  Subroutine print_matrix_mapping( map )
 
-    Class( matrix_mapping ), Intent( In ) :: matrix_map
+    Class( matrix_mapping ), Intent( In ) :: map
 
     Integer :: rank
     Integer :: error
     
-    Call mpi_comm_rank( matrix_map%proc_map%get_comm(), rank, error )
+    Call mpi_comm_rank( map%get_comm(), rank, error )
     If( rank == 0 ) Then
        Write( *, '( a, 9( i0, 1x ) )' ) 'Descriptor for matrix mapping'
-       Call matrix_map%proc_map%print
+       Call map%proc_mapping%print
     End If
     
   End Subroutine print_matrix_mapping
 
-  Subroutine set_matrix_mapping( matrix_map, proc_map, m, n, mb, nb, rsrc, csrc )
+  Subroutine set_matrix_mapping( map, proc_map, m, n, mb, nb, rsrc, csrc )
 
-    Class( matrix_mapping ), Intent(   Out ) :: matrix_map
+    Class( matrix_mapping ), Intent(   Out ) :: map
     Type ( proc_mapping   ), Intent( In    ) :: proc_map
     Integer                , Intent( In    ) :: m
     Integer                , Intent( In    ) :: n
@@ -59,36 +60,49 @@ Contains
     Integer :: nproc, nprow, npcol
     Integer :: error
 
-    matrix_map%proc_map = proc_map
+    map%proc_mapping = proc_map
 
-    matrix_map%descriptor( dtype_a ) = 1 ! Dense matrix
+    map%descriptor( dtype_a ) = 1 ! Dense matrix
 
-    Call mpi_comm_size( proc_map%get_comm(), nproc, error )
+    Call mpi_comm_size( map%get_comm(), nproc, error )
     Call factor( nproc, nprow, npcol )
-    Call blacs_gridinit( proc_map%get_comm(), 'C', nprow, npcol, matrix_map%descriptor( ctxt_a ) )
+    Call blacs_gridinit( map%get_comm(), 'C', nprow, npcol, map%descriptor( ctxt_a ) )
 
-    matrix_map%descriptor( m_a     ) = m ! Global rows
-    matrix_map%descriptor( n_a     ) = n ! Global cols
+    map%descriptor( m_a     ) = m ! Global rows
+    map%descriptor( n_a     ) = n ! Global cols
     
-    matrix_map%descriptor( mb_a    ) = mb ! row block fac
-    matrix_map%descriptor( nb_a    ) = nb ! col block fac
+    map%descriptor( mb_a    ) = mb ! row block fac
+    map%descriptor( nb_a    ) = nb ! col block fac
 
-    matrix_map%descriptor( rsrc_a  ) = rsrc ! first proc row
-    matrix_map%descriptor( csrc_a  ) = csrc ! first proc col
+    map%descriptor( rsrc_a  ) = rsrc ! first proc row
+    map%descriptor( csrc_a  ) = csrc ! first proc col
     
   End Subroutine set_matrix_mapping
 
-!!$  Subroutine split_matrix_mapping( matrix_map, weights, split_name, split_matrix_map, i_hold )
-!!$
-!!$    Class( matrix_mapping )                             , Intent( In    ) :: matrix_map
-!!$    Integer, Dimension( : )                             , Intent( In    ) :: weights
-!!$    Character( Len = * )                                , Intent( In    ) :: split_name
-!!$    Class( matrix_mapping ), Dimension( : ), Allocatable, Intent(   Out ) :: split_matrix_map
-!!$    Integer,                 Dimension( : ), Allocatable, Intent(   Out ) :: i_hold
-!!$
-!!$    Call matrix_map%proc_map%split( weights, split_name, split_matrix_map, i_hold )
-!!$
-!!$  End Subroutine split_matrix_mapping
+  Subroutine split_matrix_mapping( map, weights, split_name, split_map, i_hold )
+
+    Class( matrix_mapping )                             , Intent( In    ) :: map
+    Integer, Dimension( : )                             , Intent( In    ) :: weights
+    Character( Len = * )                                , Intent( In    ) :: split_name
+    Type ( matrix_mapping ), Dimension( : ), Allocatable, Intent(   Out ) :: split_map
+    Integer,                 Dimension( : ), Allocatable, Intent(   Out ) :: i_hold
+
+    Type( proc_mapping ), Dimension( : ), Allocatable :: proc_map
+
+    Integer :: i
+    
+    Call map%proc_mapping%split( weights, split_name, proc_map, i_hold )
+
+    Allocate( split_map( 1:Size( proc_map ) ) )
+
+    Do i = 1, Size( split_map )
+       Call split_map( i )%set( proc_map( i ) ,                 &
+            map%descriptor( m_a    ), map%descriptor( n_a    ), &
+            map%descriptor( mb_a   ), map%descriptor( nb_a   ), &
+            map%descriptor( rsrc_a ), map%descriptor( csrc_a ) )
+    End Do
+
+  End Subroutine split_matrix_mapping
 
   Subroutine factor( a, b, c )
 

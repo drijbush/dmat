@@ -7,15 +7,17 @@ Module proc_mapping_module
   Integer, Parameter, Private :: INVALID = -1
 
   Type, Public :: proc_mapping
-     Character( Len = 128 )   , Private :: name
-     Integer                  , Private :: communicator
+     Character( Len = 128 ), Private   :: name
+     Integer               , Private   :: communicator
      ! Probably should turn this into a proc_mapping - will do along the line
-     Integer                  , Private :: parent_communicator
+     Integer               , Private   :: parent_communicator
    Contains
-     Procedure :: set      => set_proc_mapping
-     Procedure :: print    => print_proc_mapping
-     Procedure :: split    => split_proc_mapping
-     Procedure :: get_comm => get_comm_proc_mapping
+     Procedure, Private :: set_proc_mapping
+     Procedure, Private :: split_proc_mapping
+     Procedure, Public  :: print    => print_proc_mapping
+     Procedure, Public  :: get_comm => get_comm_proc_mapping
+     Generic  , Public  :: set => set_proc_mapping
+     Generic  , Public  :: split => split_proc_mapping
   End Type proc_mapping
 
   Type( proc_mapping ), Public :: proc_mapping_base = proc_mapping( name = 'BASE_MAP', &
@@ -85,7 +87,7 @@ Contains
     Class( proc_mapping )                               , Intent( In    ) :: map
     Integer, Dimension( : )                             , Intent( In    ) :: weights
     Character( Len = * )                                , Intent( In    ) :: split_name
-    Class( proc_mapping )  , Dimension( : ), Allocatable, Intent(   Out ) :: split_map
+    Type ( proc_mapping )  , Dimension( : ), Allocatable, Intent(   Out ) :: split_map
     Integer,                 Dimension( : ), Allocatable, Intent(   Out ) :: i_hold
 
     Integer :: base_cost
