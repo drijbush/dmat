@@ -11,14 +11,15 @@ Module matrix_mapping_module
    Contains
      Procedure, Private :: set_matrix_mapping
      Procedure, Private :: split_matrix_mapping
-     Procedure, Public  :: print => print_matrix_mapping
-     Generic  , Public  :: set   => set_matrix_mapping
-     Generic  , Public  :: split => split_matrix_mapping
+     Procedure, Public  :: print    => print_matrix_mapping
+     Procedure, Public ::  get_data => get_matrix_mapping_data
+     Generic  , Public  :: set      => set_matrix_mapping
+     Generic  , Public  :: split    => split_matrix_mapping
   End type matrix_mapping
 
   Integer, Parameter, Private :: INVALID = -1
 
-  Type( matrix_mapping ), Private, Parameter :: matrix_mapping_base_start = &
+  Type( matrix_mapping ), Parameter :: matrix_mapping_base_start = &
        matrix_mapping( descriptor = [ INVALID, INVALID, INVALID,     &
                                       INVALID, INVALID, INVALID,     &
                                       INVALID, INVALID, INVALID ],   &
@@ -77,7 +78,7 @@ Contains
     
   End Subroutine print_matrix_mapping
 
-  Subroutine set_matrix_mapping( map, proc_map, m, n, mb, nb, rsrc, csrc )
+  Subroutine set_matrix_mapping( map, proc_map, m, n, mb, nb, rsrc, csrc, lld_a )
 
     Class( matrix_mapping ), Intent(   Out ) :: map
     Type ( proc_mapping   ), Intent( In    ) :: proc_map
@@ -87,6 +88,7 @@ Contains
     Integer                , Intent( In    ) :: nb
     Integer                , Intent( In    ) :: rsrc
     Integer                , Intent( In    ) :: csrc
+    Integer                , Intent( In    ) :: lld_a
 
     Integer :: nproc, nprow, npcol
     Integer :: error
@@ -104,14 +106,88 @@ Contains
     map%descriptor( m_a     ) = m ! Global rows
     map%descriptor( n_a     ) = n ! Global cols
     
-    map%descriptor( mb_a    ) = mb ! row block fac
-    map%descriptor( nb_a    ) = nb ! col block fac
+    map%descriptor( mb_a    ) = mb ! Row block fac
+    map%descriptor( nb_a    ) = nb ! Col block fac
 
-    map%descriptor( rsrc_a  ) = rsrc ! first proc row
-    map%descriptor( csrc_a  ) = csrc ! first proc col
+    map%descriptor( rsrc_a  ) = rsrc ! First proc row
+    map%descriptor( csrc_a  ) = csrc ! First proc col
+
+    map%descriptor( lld_a   ) = lld_a ! Local leading dimension
     
   End Subroutine set_matrix_mapping
 
+  Subroutine get_matrix_mapping_data( map, comm, nprow, npcol, myprow, mypcol,&
+       m, n, mb, nb, rsrc, csrc, lld ) 
+    
+    Class( matrix_mapping ), Intent( In    )           :: map
+    Integer                , Intent(   Out ), Optional :: comm
+    Integer                , Intent(   Out ), Optional :: nprow
+    Integer                , Intent(   Out ), Optional :: npcol
+    Integer                , Intent(   Out ), Optional :: myprow
+    Integer                , Intent(   Out ), Optional :: mypcol
+    Integer                , Intent(   Out ), Optional :: m
+    Integer                , Intent(   Out ), Optional :: n
+    Integer                , Intent(   Out ), Optional :: mb
+    Integer                , Intent(   Out ), Optional :: nb
+    Integer                , Intent(   Out ), Optional :: rsrc
+    Integer                , Intent(   Out ), Optional :: csrc
+    Integer                , Intent(   Out ), Optional :: lld
+
+    Integer :: loc_nprow, loc_npcol
+    Integer :: loc_myprow, loc_mypcol
+
+    Call blacs_gridinfo( map%descriptor( ctxt_a ), loc_nprow, loc_npcol, loc_myprow, loc_mypcol )
+
+    If( Present( comm ) ) Then
+       comm = map%get_comm()
+    End If
+
+    If( Present( nprow ) ) Then
+       nprow = loc_nprow
+    End If
+
+    If( Present( npcol ) ) Then
+       npcol = loc_npcol
+    End If
+
+    If( Present( myprow ) ) Then
+       myprow = loc_myprow
+    End If
+
+    If( Present( mypcol ) ) Then
+       mypcol = loc_mypcol
+    End If
+
+    If( Present( m ) ) Then
+       m = map%descriptor( m_a )
+    End If
+
+    If( Present( n ) ) Then
+       n = map%descriptor( n_a )
+    End If
+
+    If( Present( mb ) ) Then
+       mb = map%descriptor( mb_a )
+    End If
+
+    If( Present( nb ) ) Then
+       nb = map%descriptor( nb_a )
+    End If
+
+    If( Present( rsrc ) ) Then
+       rsrc = map%descriptor( rsrc_a )       
+    End If
+
+    If( Present( csrc ) ) Then
+       csrc = map%descriptor( csrc_a )       
+    End If
+
+    If( Present( lld ) ) Then
+       lld = map%descriptor( lld_a )       
+    End If
+
+  End Subroutine get_matrix_mapping_data
+    
   Subroutine split_matrix_mapping( map, weights, split_name, split_map, i_hold )
 
     Class( matrix_mapping )                             , Intent( In    ) :: map
@@ -132,7 +208,8 @@ Contains
        Call split_map( i )%set( proc_map( i ) ,                 &
             map%descriptor( m_a    ), map%descriptor( n_a    ), &
             map%descriptor( mb_a   ), map%descriptor( nb_a   ), &
-            map%descriptor( rsrc_a ), map%descriptor( csrc_a ) )
+            map%descriptor( rsrc_a ), map%descriptor( csrc_a ), &
+            map%descriptor( lld_a  ) )
     End Do
 
   End Subroutine split_matrix_mapping

@@ -2,7 +2,7 @@ Program dummy_main
 
   Use mpi
 
-  Use k_point_matrix_module
+!!$  Use k_point_matrix_module
   Use proc_mapping_module
   Use matrix_mapping_module
   
