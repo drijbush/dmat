@@ -11,10 +11,11 @@ Module matrix_mapping_module
    Contains
      Procedure, Private :: set_matrix_mapping
      Procedure, Private :: split_matrix_mapping
-     Procedure, Public  :: print    => print_matrix_mapping
-     Procedure, Public ::  get_data => get_matrix_mapping_data
-     Generic  , Public  :: set      => set_matrix_mapping
-     Generic  , Public  :: split    => split_matrix_mapping
+     Procedure, Public  :: print          => print_matrix_mapping
+     Procedure, Public  :: get_data       => get_matrix_mapping_data
+     Procedure, Public  :: get_descriptor => get_matrix_descriptor
+     Generic  , Public  :: set            => set_matrix_mapping
+     Generic  , Public  :: split          => split_matrix_mapping
   End type matrix_mapping
 
   Integer, Parameter, Private :: INVALID = -1
@@ -187,6 +188,16 @@ Contains
     End If
 
   End Subroutine get_matrix_mapping_data
+
+  Pure Function get_matrix_descriptor( map ) Result( descriptor )
+
+    Integer, Dimension( 1:9 ) :: descriptor
+
+    Class( matrix_mapping ), Intent( In ) :: map
+
+    descriptor = map%descriptor
+    
+  End Function get_matrix_descriptor
     
   Subroutine split_matrix_mapping( map, weights, split_name, split_map, i_hold )
 
