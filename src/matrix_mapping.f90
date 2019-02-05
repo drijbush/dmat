@@ -79,7 +79,7 @@ Contains
     
   End Subroutine print_matrix_mapping
 
-  Subroutine set_matrix_mapping( map, proc_map, m, n, mb, nb, rsrc, csrc, lld_a )
+  Subroutine set_matrix_mapping( map, proc_map, m, n, mb, nb, rsrc, csrc, lld )
 
     Class( matrix_mapping ), Intent(   Out ) :: map
     Type ( proc_mapping   ), Intent( In    ) :: proc_map
@@ -89,7 +89,7 @@ Contains
     Integer                , Intent( In    ) :: nb
     Integer                , Intent( In    ) :: rsrc
     Integer                , Intent( In    ) :: csrc
-    Integer                , Intent( In    ) :: lld_a
+    Integer                , Intent( In    ) :: lld
 
     Integer :: nproc, nprow, npcol
     Integer :: error
@@ -113,7 +113,7 @@ Contains
     map%descriptor( rsrc_a  ) = rsrc ! First proc row
     map%descriptor( csrc_a  ) = csrc ! First proc col
 
-    map%descriptor( lld_a   ) = lld_a ! Local leading dimension
+    map%descriptor( lld_a   ) = lld ! Local leading dimension
     
   End Subroutine set_matrix_mapping
 
