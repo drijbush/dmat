@@ -20,7 +20,7 @@ Module matrix_mapping_module
 
   Integer, Parameter, Private :: INVALID = -1
 
-  Type( matrix_mapping ), Parameter :: matrix_mapping_base_start = &
+  Type( matrix_mapping ), Parameter, Public :: matrix_mapping_base_start = &
        matrix_mapping( descriptor = [ INVALID, INVALID, INVALID,     &
                                       INVALID, INVALID, INVALID,     &
                                       INVALID, INVALID, INVALID ],   &

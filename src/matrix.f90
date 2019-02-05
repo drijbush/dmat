@@ -1,7 +1,8 @@
 Module distributed_matrix_module
 
   Use numbers_module       , Only : wp 
-  Use matrix_mapping_module, Only : matrix_mapping
+  Use matrix_mapping_module, Only : matrix_mapping, matrix_mapping_base_start, matrix_mapping_base, &
+       matrix_mapping_init, matrix_mapping_finalise
   
   Implicit None
 
@@ -10,23 +11,51 @@ Module distributed_matrix_module
      ! Will put in some printing stuff etc. here eventually
   End type distributed_matrix
 
-  Type, Extends( distributed_matrix ), Public :: real_distributed_matrix
+  Type, Extends( distributed_matrix ), Public :: base_distributed_matrix
+  End type base_distributed_matrix
+
+  Type( base_distributed_matrix ), Parameter :: base_matrix_start = &
+       base_distributed_matrix( matrix_map = matrix_mapping_base_start )
+  Type( base_distributed_matrix ), Public :: base_matrix = base_matrix_start
+
+  Type, Extends( base_distributed_matrix ), Public :: real_distributed_matrix
      Real( wp ), Dimension( :, : ), Allocatable :: data
    Contains
      Procedure :: diag => matrix_diag_real
   End type real_distributed_matrix
 
-  Type, Extends( distributed_matrix ), Public :: complex_distributed_matrix
+  Type, Extends( base_distributed_matrix ), Public :: complex_distributed_matrix
      Complex( wp ), Dimension( :, : ), Allocatable :: data
    Contains
      Procedure :: diag => matrix_diag_complex
   End type complex_distributed_matrix
 
+  Public :: distributed_matrix_init
+  Public :: distributed_matrix_finalise
+  
   Private
 
   Integer, Parameter :: diag_work_size_fiddle_factor = 4 ! From experience Scalapack sometimes returns too small a work size
   
 Contains
+
+  Subroutine distributed_matrix_init( comm )
+
+    Integer, Intent( In ) :: comm
+
+    Call matrix_mapping_init( comm )
+
+    base_matrix = base_matrix_start
+
+  End Subroutine distributed_matrix_init
+
+  Subroutine distributed_matrix_finalise
+
+    Call matrix_mapping_finalise
+    
+    base_matrix = base_matrix_start
+
+  End Subroutine distributed_matrix_finalise
 
   Subroutine matrix_diag_real( A, Q, E )
 
