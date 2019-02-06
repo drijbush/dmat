@@ -30,7 +30,10 @@ clean:
 .f90.o:
 	$(F90) $(F90FLAGS) -c $<
 
-dummy_main.o: matrix.o matrix_mapping.o proc_mapping.o
+distributed_k_matrices.o: matrix.o numbers.o
+dummy_main.o: distributed_k_matrices.o matrix.o matrix_mapping.o \
+	proc_mapping.o
+k_point_matrix.o: numbers.o
 matrix.o: matrix_mapping.o numbers.o scalapack_interfaces.o
 matrix_mapping.o: numbers.o proc_mapping.o
 proc_mapping.o: 

@@ -51,8 +51,13 @@ Contains
 
     Call proc_mapping_init( comm )
 
-    matrix_mapping_base%descriptor   = INVALID
+!!$    matrix_mapping_base%descriptor   = INVALID
     matrix_mapping_base%proc_mapping = proc_mapping_base
+    Call matrix_mapping_base%set( matrix_mapping_base%proc_mapping, &
+         INVALID, INVALID, &
+         INVALID, INVALID, &
+         INVALID, INVALID, &
+         INVALID )
     
   End Subroutine matrix_mapping_init
 
@@ -92,6 +97,7 @@ Contains
     Integer                , Intent( In    ) :: lld
 
     Integer :: nproc, nprow, npcol
+    Integer :: ctxt
     Integer :: error
 
     map%proc_mapping = proc_map
@@ -102,7 +108,9 @@ Contains
 
     Call mpi_comm_size( map%get_comm(), nproc, error )
     Call factor( nproc, nprow, npcol )
-    Call blacs_gridinit( map%get_comm(), 'C', nprow, npcol, map%descriptor( ctxt_a ) )
+    ctxt = map%get_comm() 
+    Call blacs_gridinit( ctxt, 'C', nprow, npcol )
+    map%descriptor( ctxt_a ) = ctxt
 
     map%descriptor( m_a     ) = m ! Global rows
     map%descriptor( n_a     ) = n ! Global cols

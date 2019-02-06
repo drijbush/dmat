@@ -7,24 +7,29 @@ Module distributed_matrix_module
   
   Implicit None
 
+  Integer, Parameter :: INVALID = -1
+  Integer, Parameter :: NOT_ME  = -2
+  
   Type, Abstract, Public :: distributed_matrix
      Type( matrix_mapping ) :: matrix_map
      ! Will put in some printing stuff etc. here eventually
   End type distributed_matrix
 
   Type, Extends( distributed_matrix ), Public :: base_distributed_matrix
+     Integer, Dimension( : ), Allocatable :: global_to_local_rows
+     Integer, Dimension( : ), Allocatable :: global_to_local_cols
+     Integer, Dimension( : ), Allocatable :: local_to_global_rows
+     Integer, Dimension( : ), Allocatable :: local_to_global_cols
    Contains
      Procedure :: create => matrix_create
   End type base_distributed_matrix
 
-  Type( base_distributed_matrix ), Parameter :: base_matrix_start = &
-       base_distributed_matrix( matrix_map = matrix_mapping_base_start )
-  Type( base_distributed_matrix ), Public :: base_matrix = base_matrix_start
+  Type( base_distributed_matrix ), Public, Protected :: base_matrix !!!!!= base_matrix_start
 
   Type, Extends( base_distributed_matrix ), Public :: real_distributed_matrix
      Real( wp ), Dimension( :, : ), Allocatable :: data
    Contains
-     Procedure :: diag   => matrix_diag_real
+     Procedure :: diag => matrix_diag_real
   End type real_distributed_matrix
 
   Type, Extends( base_distributed_matrix ), Public :: complex_distributed_matrix
@@ -40,7 +45,7 @@ Module distributed_matrix_module
 
   Integer, Parameter :: diag_work_size_fiddle_factor = 4 ! From experience Scalapack sometimes returns too small a work size
   
-  Integer, Parameter, Private :: default_block_fac = 96
+  Integer, Parameter, Private :: default_block_fac = 4
   Integer,            Private :: block_fac = default_block_fac
 
 Contains
@@ -51,15 +56,20 @@ Contains
 
     Call matrix_mapping_init( comm )
 
-    base_matrix = base_matrix_start
+    base_matrix%matrix_map = matrix_mapping_base
 
+    base_matrix%global_to_local_rows = [ INVALID ]
+    base_matrix%global_to_local_cols = [ INVALID ]
+    base_matrix%local_to_global_rows = [ INVALID ]
+    base_matrix%local_to_global_cols = [ INVALID ]
+    
   End Subroutine distributed_matrix_init
 
   Subroutine distributed_matrix_finalise
 
     Call matrix_mapping_finalise
     
-    base_matrix = base_matrix_start
+    base_matrix%matrix_map = matrix_mapping_base
 
   End Subroutine distributed_matrix_finalise
 
@@ -87,6 +97,8 @@ Contains
     Call matrix%matrix_map%get_data( npcol = npcol, mypcol = mypcol )
     sda = numroc( n, nb, mypcol, 0, npcol )
 
+    Write( *, * ) mb, nb, lda, sda, myprow, mypcol, nprow, npcol
+    
     Call matrix%matrix_map%set( matrix%matrix_map%proc_mapping, m, n, mb, nb, 0, 0, lda )
 
     Select Type( matrix )
@@ -98,7 +110,67 @@ Contains
        Allocate( matrix%data( 1:lda, 1:sda  ) )
     End Select
 
+    Call set_local_to_global( matrix%local_to_global_rows, m, mb, myprow, nprow, lda )
+    Call set_local_to_global( matrix%local_to_global_cols, n, nb, mypcol, npcol, sda )
+    Call set_global_to_local( matrix%global_to_local_rows, m, mb, myprow, nprow )
+    Call set_global_to_local( matrix%global_to_local_cols, n, nb, mypcol, npcol )
+
   End Subroutine matrix_create
+
+  Subroutine set_local_to_global( loc_to_glob, n, nb, myp, np, da )
+
+    Integer, Dimension( : ), Allocatable, Intent(   Out ) :: loc_to_glob
+    Integer                             , Intent( In    ) :: n
+    Integer                             , Intent( In    ) :: nb
+    Integer                             , Intent( In    ) :: myp
+    Integer                             , Intent( In    ) :: np
+    Integer                             , Intent( In    ) :: da
+
+    Integer :: i_glob, i_loc, skip, start
+
+    Allocate( loc_to_glob( 1:da ) )
+
+    skip =  np * nb
+
+    i_loc = 1
+    start = myp * nb + 1
+    Do While( start <= n )
+       Do i_glob = start, Min( start + nb - 1, n )
+          loc_to_glob( i_loc ) = i_glob
+          i_loc = i_loc + 1
+       End Do
+       start = start + skip
+    End Do
+
+  End Subroutine set_local_to_global
+  
+  Subroutine set_global_to_local( glob_to_loc, n, nb, myp, np )
+
+    Integer, Dimension( : ), Allocatable, Intent(   Out ) :: glob_to_loc
+    Integer                             , Intent( In    ) :: n
+    Integer                             , Intent( In    ) :: nb
+    Integer                             , Intent( In    ) :: myp
+    Integer                             , Intent( In    ) :: np
+
+    Integer :: i_glob, i_loc, skip, start
+
+    Allocate( glob_to_loc( 1:n ) )
+
+    glob_to_loc = NOT_ME
+    
+    skip =  np * nb
+
+    i_loc = 1
+    start = myp * nb + 1
+    Do While( start <= n )
+       Do i_glob = start, Min( start + nb - 1, n )
+          glob_to_loc( i_glob ) = i_loc
+          i_loc = i_loc + 1
+       End Do
+       start = start + skip
+    End Do
+
+  End Subroutine set_global_to_local
   
   Subroutine matrix_diag_real( A, Q, E )
 

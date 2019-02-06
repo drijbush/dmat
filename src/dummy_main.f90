@@ -2,7 +2,7 @@ Program dummy_main
 
   Use mpi
 
-!!$  Use k_point_matrix_module
+  Use distributed_k_module
   Use proc_mapping_module
   Use matrix_mapping_module
   Use distributed_matrix_module
@@ -15,15 +15,24 @@ Program dummy_main
   Integer :: i
   Integer :: error
 
+  Type( real_distributed_matrix ) :: A
+
   Call mpi_init( error )
-  Call matrix_mapping_init( MPI_COMM_WORLD )
+
+  Call distributed_matrix_init( MPI_COMM_WORLD )
+
   Call matrix_mapping_base%print()
   Call proc_mapping_base%split( [ 1, 2, 1, 2 ], 'k split', split_proc_map, i_hold )
   Call matrix_mapping_base%split( [ 1, 2, 1, 2 ], 'k split', split_matrix_map, i_hold )
   Do i = 1, Size( split_matrix_map )
      Call split_matrix_map( i )%print()
   End Do
-  Call matrix_mapping_finalise
+
+  Call A%create( 20, 15, base_matrix )
+  
+  Call distributed_matrix_finalise
+  
   Call mpi_finalize( error )
+  
   
 End Program dummy_main
