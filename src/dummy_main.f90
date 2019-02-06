@@ -5,6 +5,7 @@ Program dummy_main
 !!$  Use k_point_matrix_module
   Use proc_mapping_module
   Use matrix_mapping_module
+  Use distributed_matrix_module
   
   Implicit None
 
