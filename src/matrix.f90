@@ -30,6 +30,7 @@ Module distributed_matrix_module
      Procedure :: set_by_global => matrix_set_global_real
      Procedure :: set_by_local  => matrix_set_local_real
      Procedure :: get_by_global => matrix_get_global_real
+     Procedure :: get_by_local  => matrix_get_local_real
   End type real_distributed_matrix
 
   Type, Extends( distributed_matrix ), Public :: complex_distributed_matrix
@@ -39,6 +40,7 @@ Module distributed_matrix_module
      Procedure :: set_by_global => matrix_set_global_complex
      Procedure :: set_by_local  => matrix_set_local_complex
      Procedure :: get_by_global => matrix_get_global_complex
+     Procedure :: get_by_local  => matrix_get_local_complex
   End type complex_distributed_matrix
 
   Public :: distributed_matrix_init
@@ -53,74 +55,6 @@ Module distributed_matrix_module
   Integer,            Private :: block_fac = default_block_fac
 
 Contains
-
-  Subroutine matrix_get_global_real( matrix, m, n, p, q, data )
-
-    ! Gets the data ( m:n, p:q ) in the global matrix
-
-    Class( real_distributed_matrix ), Intent( InOut ) :: matrix
-    Integer                         , Intent( In    ) :: m
-    Integer                         , Intent( In    ) :: n
-    Integer                         , Intent( In    ) :: p
-    Integer                         , Intent( In    ) :: q
-    Real( wp ), Dimension( m:, p: ) , Intent(   Out ) :: data
-
-    Integer :: i_glob, j_glob
-    Integer :: i_loc , j_loc
-    Integer :: handle
-    Integer :: error
-    
-    ! THIS NEEDS OPTIMISATION!!
-    data = 0.0_wp
-    Do j_glob = p, q
-       j_loc = matrix%global_to_local_cols( j_glob )
-       If( j_loc == distributed_matrix_NOT_ME ) Cycle
-       Do i_glob = m, n
-          i_loc = matrix%global_to_local_rows( i_glob )
-          If( i_loc == distributed_matrix_NOT_ME ) Cycle
-          data( j_glob, i_glob ) = matrix%data( i_loc, j_loc )
-       End Do
-    End Do
-    ! Generate a portable MPI data type handle from the variable to be communicated
-    Call MPI_Type_create_f90_real( Precision( data ), Range( data ), handle, error )
-    ! Replicate the data
-    Call MPI_Allreduce( MPI_IN_PLACE, data, Size( data ), handle, MPI_SUM, matrix%matrix_map%get_comm(), error )
-       
-  End Subroutine matrix_get_global_real
-
-  Subroutine matrix_get_global_complex( matrix, m, n, p, q, data )
-
-    ! Gets the data ( m:n, p:q ) in the global matrix
-
-    Class( complex_distributed_matrix ), Intent( InOut ) :: matrix
-    Integer                            , Intent( In    ) :: m
-    Integer                            , Intent( In    ) :: n
-    Integer                            , Intent( In    ) :: p
-    Integer                            , Intent( In    ) :: q
-    Complex( wp ), Dimension( m:, p: ) , Intent(   Out ) :: data
-
-    Integer :: i_glob, j_glob
-    Integer :: i_loc , j_loc
-    Integer :: handle
-    Integer :: error
-    
-    ! THIS NEEDS OPTIMISATION!!
-    data = 0.0_wp
-    Do j_glob = p, q
-       j_loc = matrix%global_to_local_cols( j_glob )
-       If( j_loc == distributed_matrix_NOT_ME ) Cycle
-       Do i_glob = m, n
-          i_loc = matrix%global_to_local_rows( i_glob )
-          If( i_loc == distributed_matrix_NOT_ME ) Cycle
-          data( j_glob, i_glob ) = matrix%data( i_loc, j_loc )
-       End Do
-    End Do
-    ! Generate a portable MPI data type handle from the variable to be communicated
-    Call MPI_Type_create_f90_complex( Precision( data ), Range( data ), handle, error )
-    ! Replicate the data
-    Call MPI_Allreduce( MPI_IN_PLACE, data, Size( data ), handle, MPI_SUM, matrix%matrix_map%get_comm(), error )
-       
-  End Subroutine matrix_get_global_complex
 
   Subroutine distributed_matrix_init( comm, base_matrix )
 
@@ -344,6 +278,104 @@ Contains
     
   End Subroutine matrix_set_local_complex
 
+  Subroutine matrix_get_global_real( matrix, m, n, p, q, data )
+
+    ! Gets the data ( m:n, p:q ) in the global matrix
+
+    Class( real_distributed_matrix ), Intent( InOut ) :: matrix
+    Integer                         , Intent( In    ) :: m
+    Integer                         , Intent( In    ) :: n
+    Integer                         , Intent( In    ) :: p
+    Integer                         , Intent( In    ) :: q
+    Real( wp ), Dimension( m:, p: ) , Intent(   Out ) :: data
+
+    Integer :: i_glob, j_glob
+    Integer :: i_loc , j_loc
+    Integer :: handle
+    Integer :: error
+    
+    ! THIS NEEDS OPTIMISATION!!
+    data = 0.0_wp
+    Do j_glob = p, q
+       j_loc = matrix%global_to_local_cols( j_glob )
+       If( j_loc == distributed_matrix_NOT_ME ) Cycle
+       Do i_glob = m, n
+          i_loc = matrix%global_to_local_rows( i_glob )
+          If( i_loc == distributed_matrix_NOT_ME ) Cycle
+          data( j_glob, i_glob ) = matrix%data( i_loc, j_loc )
+       End Do
+    End Do
+    ! Generate a portable MPI data type handle from the variable to be communicated
+    Call MPI_Type_create_f90_real( Precision( data ), Range( data ), handle, error )
+    ! Replicate the data
+    Call MPI_Allreduce( MPI_IN_PLACE, data, Size( data ), handle, MPI_SUM, matrix%matrix_map%get_comm(), error )
+       
+  End Subroutine matrix_get_global_real
+
+  Subroutine matrix_get_local_real( matrix, m, n, p, q, data )
+
+    ! Gets the data ( m:n, p:q ) in the local matrix
+
+    Class( real_distributed_matrix ), Intent( InOut ) :: matrix
+    Integer                         , Intent( In    ) :: m
+    Integer                         , Intent( In    ) :: n
+    Integer                         , Intent( In    ) :: p
+    Integer                         , Intent( In    ) :: q
+    Real( wp ), Dimension( m:, p: ) , Intent(   Out ) :: data
+
+    data( m:n, p:q ) = matrix%data( m:n, p:q )
+       
+  End Subroutine matrix_get_local_real
+
+  Subroutine matrix_get_global_complex( matrix, m, n, p, q, data )
+
+    ! Gets the data ( m:n, p:q ) in the global matrix
+
+    Class( complex_distributed_matrix ), Intent( InOut ) :: matrix
+    Integer                            , Intent( In    ) :: m
+    Integer                            , Intent( In    ) :: n
+    Integer                            , Intent( In    ) :: p
+    Integer                            , Intent( In    ) :: q
+    Complex( wp ), Dimension( m:, p: ) , Intent(   Out ) :: data
+
+    Integer :: i_glob, j_glob
+    Integer :: i_loc , j_loc
+    Integer :: handle
+    Integer :: error
+    
+    ! THIS NEEDS OPTIMISATION!!
+    data = 0.0_wp
+    Do j_glob = p, q
+       j_loc = matrix%global_to_local_cols( j_glob )
+       If( j_loc == distributed_matrix_NOT_ME ) Cycle
+       Do i_glob = m, n
+          i_loc = matrix%global_to_local_rows( i_glob )
+          If( i_loc == distributed_matrix_NOT_ME ) Cycle
+          data( j_glob, i_glob ) = matrix%data( i_loc, j_loc )
+       End Do
+    End Do
+    ! Generate a portable MPI data type handle from the variable to be communicated
+    Call MPI_Type_create_f90_complex( Precision( data ), Range( data ), handle, error )
+    ! Replicate the data
+    Call MPI_Allreduce( MPI_IN_PLACE, data, Size( data ), handle, MPI_SUM, matrix%matrix_map%get_comm(), error )
+       
+  End Subroutine matrix_get_global_complex
+
+  Subroutine matrix_get_local_complex( matrix, m, n, p, q, data )
+
+    ! Gets the data ( m:n, p:q ) in the local matrix
+
+    Class( complex_distributed_matrix ), Intent( InOut ) :: matrix
+    Integer                            , Intent( In    ) :: m
+    Integer                            , Intent( In    ) :: n
+    Integer                            , Intent( In    ) :: p
+    Integer                            , Intent( In    ) :: q
+    Complex( wp ), Dimension( m:, p: ) , Intent(   Out ) :: data
+
+    data( m:n, p:q ) = matrix%data( m:n, p:q )
+       
+  End Subroutine matrix_get_local_complex
+  
   Subroutine matrix_get_maps( matrix, gl_rows, gl_cols, lg_rows, lg_cols )
 
     Class( distributed_matrix )         , Intent( In    ) :: matrix
