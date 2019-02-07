@@ -125,13 +125,9 @@ Contains
 
     Call set_local_to_global( matrix%local_to_global_rows, m, mb, myprow, nprow, lda )
     Call set_local_to_global( matrix%local_to_global_cols, n, nb, mypcol, npcol, sda )
-    Write( *, * ) 'l->g', m, mb, myprow, nprow, lda, matrix%local_to_global_rows
-    Write( *, * ) 'l->g', n, nb, mypcol, npcol, sda, matrix%local_to_global_cols
 
     Call set_global_to_local( matrix%global_to_local_rows, m, mb, myprow, nprow )
     Call set_global_to_local( matrix%global_to_local_cols, n, nb, mypcol, npcol )
-    Write( *, * ) 'g->l', m, mb, myprow, nprow, lda, matrix%global_to_local_rows
-    Write( *, * ) 'g->l', n, nb, mypcol, npcol, sda, matrix%global_to_local_cols
 
   Contains
 
@@ -214,7 +210,7 @@ Contains
        Do i_glob = m, n
           i_loc = matrix%global_to_local_rows( i_glob )
           If( i_loc == distributed_matrix_NOT_ME ) Cycle
-          matrix%data( i_loc, j_loc ) = data( j_glob, i_glob )
+          matrix%data( i_loc, j_loc ) = data( i_glob, j_glob )
        End Do
     End Do
        
@@ -257,7 +253,7 @@ Contains
        Do i_glob = m, n
           i_loc = matrix%global_to_local_rows( i_glob )
           If( i_loc == distributed_matrix_NOT_ME ) Cycle
-          matrix%data( i_loc, j_loc ) = data( j_glob, i_glob )
+          matrix%data( i_loc, j_loc ) = data( i_glob, j_glob )
        End Do
     End Do
        
@@ -302,7 +298,7 @@ Contains
        Do i_glob = m, n
           i_loc = matrix%global_to_local_rows( i_glob )
           If( i_loc == distributed_matrix_NOT_ME ) Cycle
-          data( j_glob, i_glob ) = matrix%data( i_loc, j_loc )
+          data( i_glob, j_glob ) = matrix%data( i_loc, j_loc )
        End Do
     End Do
     ! Generate a portable MPI data type handle from the variable to be communicated
@@ -351,7 +347,7 @@ Contains
        Do i_glob = m, n
           i_loc = matrix%global_to_local_rows( i_glob )
           If( i_loc == distributed_matrix_NOT_ME ) Cycle
-          data( j_glob, i_glob ) = matrix%data( i_loc, j_loc )
+          data( i_glob, j_glob ) = matrix%data( i_loc, j_loc )
        End Do
     End Do
     ! Generate a portable MPI data type handle from the variable to be communicated
@@ -423,11 +419,14 @@ Contains
     tmp_A = A%data
 
     ! Workspace size enquiry
+    Allocate( work( 1:1 ), iwork( 1:1 ) )
     Call pdsyevd( 'V', 'U', m, tmp_A, 1, 1, A%matrix_map%get_descriptor(), E, Q%data, 1, 1, Q%matrix_map%get_descriptor(), &
          work, -1, iwork, 0, info )
     nwork = Nint( work( 1 ) )
     nwork = nwork * diag_work_size_fiddle_factor ! From experience ...
+    Deallocate( work, iwork )
     Allocate(  work( 1:nwork ) )
+    ! Scalapack recipe is behind the strange numbers
     Allocate( iwork( 1:7 * m + 8 * npcol + 2 ) )
     ! Do the diag
     Call pdsyevd( 'V', 'U', m, tmp_A, 1, 1, A%matrix_map%get_descriptor(), E, Q%data, 1, 1, Q%matrix_map%get_descriptor(), &
@@ -468,10 +467,12 @@ Contains
     tmp_A = A%data
 
     ! Workspace size enquiry
+    Allocate( cwork( 1:1 ) )
     Call pzheevd( 'V', 'U', m, tmp_A, 1, 1, A%matrix_map%get_descriptor(), E, Q%data, 1, 1, Q%matrix_map%get_descriptor(), &
          cwork, -1, rwork, -1, iwork, 0, info )
     ncwork = Nint( Real( cwork( 1 ), wp ) )
     ncwork = ncwork * diag_work_size_fiddle_factor ! From experience ...
+    Deallocate( cwork )
     Allocate( cwork( 1:ncwork ) )
     nrwork = Nint( rwork( 1 ) )
     nrwork = nrwork * diag_work_size_fiddle_factor ! From experience ...

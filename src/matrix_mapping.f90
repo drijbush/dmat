@@ -45,7 +45,7 @@ Contains
     Type( matrix_mapping ), Intent(   Out ) :: mapping
 
     Type( proc_mapping ) :: proc_mapping_base
-    
+
     Call proc_mapping_init( comm, proc_mapping_base )
 
     Call mapping%set( proc_mapping_base, &
@@ -93,6 +93,9 @@ Contains
     Integer :: ctxt
     Integer :: error
 
+    Integer :: loc_nprow, loc_npcol
+    Integer :: loc_myprow, loc_mypcol
+
     map%proc_mapping = proc_map
 
     map%descriptor = INVALID
@@ -101,9 +104,10 @@ Contains
 
     Call mpi_comm_size( map%get_comm(), nproc, error )
     Call factor( nproc, nprow, npcol )
-    ctxt = map%get_comm() 
+    ctxt = map%get_comm()
     Call blacs_gridinit( ctxt, 'C', nprow, npcol )
     map%descriptor( ctxt_a ) = ctxt
+    Call blacs_gridinfo( map%descriptor( ctxt_a ), loc_nprow, loc_npcol, loc_myprow, loc_mypcol )
 
     map%descriptor( m_a     ) = m ! Global rows
     map%descriptor( n_a     ) = n ! Global cols
