@@ -97,8 +97,7 @@ Contains
 
     Integer :: nprow, myprow, mb, lda
     Integer :: npcol, mypcol, nb, sda
-
-    matrix%matrix_map = source_matrix%matrix_map
+    Integer :: ctxt
 
     ! Need to fix if n, m smaller than blocking fac
     mb = block_fac
@@ -106,13 +105,15 @@ Contains
     mb = Min( mb, nb )
     nb = mb
 
-    Call matrix%matrix_map%get_data( nprow = nprow, myprow = myprow )
+    Call source_matrix%matrix_map%get_data( nprow = nprow, myprow = myprow )
     lda = numroc( m, mb, myprow, 0, nprow )
 
-    Call matrix%matrix_map%get_data( npcol = npcol, mypcol = mypcol )
+    Call source_matrix%matrix_map%get_data( npcol = npcol, mypcol = mypcol )
     sda = numroc( n, nb, mypcol, 0, npcol )
 
-    Call matrix%matrix_map%set( matrix%matrix_map%proc_mapping, m, n, mb, nb, 0, 0, lda )
+    Call source_matrix%matrix_map%get_data( ctxt = ctxt )
+
+    Call matrix%matrix_map%set( matrix%matrix_map%proc_mapping, ctxt, m, n, mb, nb, 0, 0, lda )
 
     Select Type( matrix )
     Class Default

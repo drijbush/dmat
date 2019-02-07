@@ -46,9 +46,13 @@ Contains
 
     Type( proc_mapping ) :: proc_mapping_base
 
+    Integer :: context
+
     Call proc_mapping_init( comm, proc_mapping_base )
 
-    Call mapping%set( proc_mapping_base, &
+    Call get_context_from_comm( comm, context )
+
+    Call mapping%set( proc_mapping_base, context, &
          INVALID, INVALID, &
          INVALID, INVALID, &
          INVALID, INVALID, &
@@ -77,10 +81,26 @@ Contains
     
   End Subroutine print_matrix_mapping
 
-  Subroutine set_matrix_mapping( map, proc_map, m, n, mb, nb, rsrc, csrc, lld )
+  Subroutine get_context_from_comm( comm, context )
+
+    Integer, Intent( In    ) :: comm
+    Integer, Intent(   Out ) :: context
+
+    Integer :: nproc, nprow, npcol
+    Integer :: error
+    
+    Call mpi_comm_size( comm, nproc, error )
+    Call factor( nproc, nprow, npcol )
+    context = comm
+    Call blacs_gridinit( context, 'C', nprow, npcol )
+    
+  End Subroutine get_context_from_comm
+  
+  Subroutine set_matrix_mapping( map, proc_map, context, m, n, mb, nb, rsrc, csrc, lld )
 
     Class( matrix_mapping ), Intent(   Out ) :: map
     Type ( proc_mapping   ), Intent( In    ) :: proc_map
+    Integer                , Intent( In    ) :: context
     Integer                , Intent( In    ) :: m
     Integer                , Intent( In    ) :: n
     Integer                , Intent( In    ) :: mb
@@ -89,25 +109,13 @@ Contains
     Integer                , Intent( In    ) :: csrc
     Integer                , Intent( In    ) :: lld
 
-    Integer :: nproc, nprow, npcol
-    Integer :: ctxt
-    Integer :: error
-
-    Integer :: loc_nprow, loc_npcol
-    Integer :: loc_myprow, loc_mypcol
-
     map%proc_mapping = proc_map
 
     map%descriptor = INVALID
     
     map%descriptor( dtype_a ) = 1 ! Dense matrix
 
-    Call mpi_comm_size( map%get_comm(), nproc, error )
-    Call factor( nproc, nprow, npcol )
-    ctxt = map%get_comm()
-    Call blacs_gridinit( ctxt, 'C', nprow, npcol )
-    map%descriptor( ctxt_a ) = ctxt
-    Call blacs_gridinfo( map%descriptor( ctxt_a ), loc_nprow, loc_npcol, loc_myprow, loc_mypcol )
+    map%descriptor( ctxt_a ) = context
 
     map%descriptor( m_a     ) = m ! Global rows
     map%descriptor( n_a     ) = n ! Global cols
@@ -123,7 +131,7 @@ Contains
   End Subroutine set_matrix_mapping
 
   Subroutine get_matrix_mapping_data( map, comm, nprow, npcol, myprow, mypcol,&
-       m, n, mb, nb, rsrc, csrc, lld ) 
+       ctxt, m, n, mb, nb, rsrc, csrc, lld ) 
     
     Class( matrix_mapping ), Intent( In    )           :: map
     Integer                , Intent(   Out ), Optional :: comm
@@ -131,6 +139,7 @@ Contains
     Integer                , Intent(   Out ), Optional :: npcol
     Integer                , Intent(   Out ), Optional :: myprow
     Integer                , Intent(   Out ), Optional :: mypcol
+    Integer                , Intent(   Out ), Optional :: ctxt
     Integer                , Intent(   Out ), Optional :: m
     Integer                , Intent(   Out ), Optional :: n
     Integer                , Intent(   Out ), Optional :: mb
@@ -162,6 +171,10 @@ Contains
 
     If( Present( mypcol ) ) Then
        mypcol = loc_mypcol
+    End If
+
+    If( Present( ctxt ) ) Then
+       ctxt = map%descriptor( ctxt_a )
     End If
 
     If( Present( m ) ) Then
@@ -222,6 +235,7 @@ Contains
 
     Do i = 1, Size( split_map )
        Call split_map( i )%set( proc_map( i ) ,                 &
+            map%descriptor( ctxt_a ),                           &
             map%descriptor( m_a    ), map%descriptor( n_a    ), &
             map%descriptor( mb_a   ), map%descriptor( nb_a   ), &
             map%descriptor( rsrc_a ), map%descriptor( csrc_a ), &
