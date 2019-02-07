@@ -16,7 +16,8 @@ Module distributed_matrix_module
      Integer, Dimension( : ), Allocatable :: local_to_global_rows
      Integer, Dimension( : ), Allocatable :: local_to_global_cols
    Contains
-     Procedure :: create => matrix_create
+     Procedure :: create   => matrix_create
+     Procedure :: get_maps => matrix_get_maps
   End type distributed_matrix
 
   Type, Extends( distributed_matrix ), Public :: real_distributed_matrix
@@ -79,6 +80,110 @@ Contains
     block_fac = bfac
     
   End Subroutine distributed_matrix_set_default_blocking
+
+  Subroutine matrix_create( matrix, m, n, source_matrix )
+
+    Class( distributed_matrix ), Intent(   Out ) :: matrix
+    Integer                    , Intent( In    ) :: m
+    Integer                    , Intent( In    ) :: n
+    Class( distributed_matrix ), Intent( In    ) :: source_matrix
+
+    Integer :: nprow, myprow, mb, lda
+    Integer :: npcol, mypcol, nb, sda
+
+    matrix%matrix_map = source_matrix%matrix_map
+
+    ! Need to fix if n, m smaller than blocking fac
+    mb = block_fac
+    nb = block_fac
+    mb = Min( mb, nb )
+    nb = mb
+
+    Call matrix%matrix_map%get_data( nprow = nprow, myprow = myprow )
+    lda = numroc( m, mb, myprow, 0, nprow )
+
+    Call matrix%matrix_map%get_data( npcol = npcol, mypcol = mypcol )
+    sda = numroc( n, nb, mypcol, 0, npcol )
+
+    Call matrix%matrix_map%set( matrix%matrix_map%proc_mapping, m, n, mb, nb, 0, 0, lda )
+
+    Select Type( matrix )
+    Class Default
+       Stop "Illegal type in matrix_create"
+    Class is ( real_distributed_matrix )
+       Allocate( matrix%data( 1:lda, 1:sda  ) )
+    Class is ( complex_distributed_matrix )
+       Allocate( matrix%data( 1:lda, 1:sda  ) )
+    End Select
+
+    Call set_local_to_global( matrix%local_to_global_rows, m, mb, myprow, nprow, lda )
+    Call set_local_to_global( matrix%local_to_global_cols, n, nb, mypcol, npcol, sda )
+    Write( *, * ) 'l->g', m, mb, myprow, nprow, lda, matrix%local_to_global_rows
+    Write( *, * ) 'l->g', n, nb, mypcol, npcol, sda, matrix%local_to_global_cols
+
+    Call set_global_to_local( matrix%global_to_local_rows, m, mb, myprow, nprow )
+    Call set_global_to_local( matrix%global_to_local_cols, n, nb, mypcol, npcol )
+    Write( *, * ) 'g->l', m, mb, myprow, nprow, lda, matrix%global_to_local_rows
+    Write( *, * ) 'g->l', n, nb, mypcol, npcol, sda, matrix%global_to_local_cols
+
+  Contains
+
+    Subroutine set_local_to_global( loc_to_glob, n, nb, myp, np, da )
+      
+      Integer, Dimension( : ), Allocatable, Intent(   Out ) :: loc_to_glob
+      Integer                             , Intent( In    ) :: n
+      Integer                             , Intent( In    ) :: nb
+      Integer                             , Intent( In    ) :: myp
+      Integer                             , Intent( In    ) :: np
+      Integer                             , Intent( In    ) :: da
+      
+      Integer :: i_glob, i_loc, skip, start
+      
+      Allocate( loc_to_glob( 1:da ) )
+      
+      skip =  np * nb
+      
+      i_loc = 1
+      start = myp * nb + 1
+      Do While( start <= n )
+         Do i_glob = start, Min( start + nb - 1, n )
+            loc_to_glob( i_loc ) = i_glob
+            i_loc = i_loc + 1
+         End Do
+         start = start + skip
+      End Do
+
+    End Subroutine set_local_to_global
+  
+    Subroutine set_global_to_local( glob_to_loc, n, nb, myp, np )
+
+      Integer, Dimension( : ), Allocatable, Intent(   Out ) :: glob_to_loc
+      Integer                             , Intent( In    ) :: n
+      Integer                             , Intent( In    ) :: nb
+      Integer                             , Intent( In    ) :: myp
+      Integer                             , Intent( In    ) :: np
+      
+      Integer :: i_glob, i_loc, skip, start
+
+      Allocate( glob_to_loc( 1:n ) )
+      
+      glob_to_loc = distributed_matrix_NOT_ME
+      
+      skip =  np * nb
+      
+      i_loc = 1
+      start = myp * nb + 1
+      Do While( start <= n )
+         Do i_glob = start, Min( start + nb - 1, n )
+            glob_to_loc( i_glob ) = i_loc
+            i_loc = i_loc + 1
+         End Do
+         start = start + skip
+      End Do
+
+    End Subroutine set_global_to_local
+    
+  End Subroutine matrix_create
 
   Subroutine matrix_set_global_real( matrix, m, n, p, q, data )
 
@@ -166,108 +271,23 @@ Contains
     
   End Subroutine matrix_set_local_complex
 
-  Subroutine matrix_create( matrix, m, n, source_matrix )
 
-    Class( distributed_matrix ), Intent(   Out ) :: matrix
-    Integer                    , Intent( In    ) :: m
-    Integer                    , Intent( In    ) :: n
-    Class( distributed_matrix ), Intent( In    ) :: source_matrix
+  Subroutine matrix_get_maps( matrix, gl_rows, gl_cols, lg_rows, lg_cols )
 
-    Integer :: nprow, myprow, mb, lda
-    Integer :: npcol, mypcol, nb, sda
+    Class( distributed_matrix )         , Intent( In    ) :: matrix
+    Integer, Dimension( : ), Allocatable, Intent(   Out ) :: gl_rows
+    Integer, Dimension( : ), Allocatable, Intent(   Out ) :: gl_cols
+    Integer, Dimension( : ), Allocatable, Intent(   Out ) :: lg_rows
+    Integer, Dimension( : ), Allocatable, Intent(   Out ) :: lg_cols
 
-    matrix%matrix_map = source_matrix%matrix_map
-
-    ! Need to fix if n, m smaller than blocking fac
-    mb = block_fac
-    nb = block_fac
-    mb = Min( mb, nb )
-    nb = mb
-
-    Call matrix%matrix_map%get_data( nprow = nprow, myprow = myprow )
-    lda = numroc( m, mb, myprow, 0, nprow )
-
-    Call matrix%matrix_map%get_data( npcol = npcol, mypcol = mypcol )
-    sda = numroc( n, nb, mypcol, 0, npcol )
-
-    Call matrix%matrix_map%set( matrix%matrix_map%proc_mapping, m, n, mb, nb, 0, 0, lda )
-
-    Select Type( matrix )
-    Class Default
-       Stop "Illegal type in matrix_create"
-    Class is ( real_distributed_matrix )
-       Allocate( matrix%data( 1:lda, 1:sda  ) )
-    Class is ( complex_distributed_matrix )
-       Allocate( matrix%data( 1:lda, 1:sda  ) )
-    End Select
-
-    Call set_local_to_global( matrix%local_to_global_rows, m, mb, myprow, nprow, lda )
-    Call set_local_to_global( matrix%local_to_global_cols, n, nb, mypcol, npcol, sda )
-    Write( *, * ) 'l->g', m, mb, myprow, nprow, lda, matrix%local_to_global_rows
-    Write( *, * ) 'l->g', n, nb, mypcol, npcol, sda, matrix%local_to_global_cols
-
-    Call set_global_to_local( matrix%global_to_local_rows, m, mb, myprow, nprow )
-    Call set_global_to_local( matrix%global_to_local_cols, n, nb, mypcol, npcol )
-    Write( *, * ) 'g->l', m, mb, myprow, nprow, lda, matrix%global_to_local_rows
-    Write( *, * ) 'g->l', n, nb, mypcol, npcol, sda, matrix%global_to_local_cols
-
-  End Subroutine matrix_create
-
-  Subroutine set_local_to_global( loc_to_glob, n, nb, myp, np, da )
-
-    Integer, Dimension( : ), Allocatable, Intent(   Out ) :: loc_to_glob
-    Integer                             , Intent( In    ) :: n
-    Integer                             , Intent( In    ) :: nb
-    Integer                             , Intent( In    ) :: myp
-    Integer                             , Intent( In    ) :: np
-    Integer                             , Intent( In    ) :: da
-
-    Integer :: i_glob, i_loc, skip, start
-
-    Allocate( loc_to_glob( 1:da ) )
-
-    skip =  np * nb
-
-    i_loc = 1
-    start = myp * nb + 1
-    Do While( start <= n )
-       Do i_glob = start, Min( start + nb - 1, n )
-          loc_to_glob( i_loc ) = i_glob
-          i_loc = i_loc + 1
-       End Do
-       start = start + skip
-    End Do
-
-  End Subroutine set_local_to_global
-  
-  Subroutine set_global_to_local( glob_to_loc, n, nb, myp, np )
-
-    Integer, Dimension( : ), Allocatable, Intent(   Out ) :: glob_to_loc
-    Integer                             , Intent( In    ) :: n
-    Integer                             , Intent( In    ) :: nb
-    Integer                             , Intent( In    ) :: myp
-    Integer                             , Intent( In    ) :: np
-
-    Integer :: i_glob, i_loc, skip, start
-
-    Allocate( glob_to_loc( 1:n ) )
-
-    glob_to_loc = distributed_matrix_NOT_ME
+    ! Note using allocate on set
+    gl_rows = matrix%global_to_local_rows
+    gl_cols = matrix%global_to_local_cols
+    lg_rows = matrix%local_to_global_rows
+    lg_cols = matrix%local_to_global_cols
     
-    skip =  np * nb
+  End Subroutine matrix_get_maps
 
-    i_loc = 1
-    start = myp * nb + 1
-    Do While( start <= n )
-       Do i_glob = start, Min( start + nb - 1, n )
-          glob_to_loc( i_glob ) = i_loc
-          i_loc = i_loc + 1
-       End Do
-       start = start + skip
-    End Do
-
-  End Subroutine set_global_to_local
-  
   Subroutine matrix_diag_real( A, Q, E )
 
     Use numbers_module, Only : wp
