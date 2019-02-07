@@ -2,7 +2,8 @@ Module matrix_mapping_module
 
   Use numbers_module     , Only : wp
   Use mpi
-  Use proc_mapping_module, Only : proc_mapping, proc_mapping_init, proc_mapping_finalise, proc_mapping_base, proc_mapping_base_start
+!!$  Use proc_mapping_module, Only : proc_mapping, proc_mapping_init, proc_mapping_finalise, proc_mapping_base, proc_mapping_base_start
+  Use proc_mapping_module, Only : proc_mapping, proc_mapping_init, proc_mapping_finalise
   
   Implicit None
 
@@ -19,13 +20,6 @@ Module matrix_mapping_module
   End type matrix_mapping
 
   Integer, Parameter, Private :: INVALID = -1
-
-  Type( matrix_mapping ), Parameter, Public :: matrix_mapping_base_start = &
-       matrix_mapping( descriptor = [ INVALID, INVALID, INVALID,     &
-                                      INVALID, INVALID, INVALID,     &
-                                      INVALID, INVALID, INVALID ],   &
-                                      proc_mapping =  proc_mapping_base_start )
-  Type( matrix_mapping ), Public, Protected :: matrix_mapping_base = matrix_mapping_base_start
 
   Public :: matrix_mapping_init
   Public :: matrix_mapping_finalise
@@ -45,15 +39,16 @@ Module matrix_mapping_module
 
 Contains
 
-  Subroutine matrix_mapping_init( comm )
+  Subroutine matrix_mapping_init( comm, mapping )
 
-    Integer, Intent( In ) :: comm
+    Integer               , Intent( In ) :: comm
+    Type( matrix_mapping ), Intent(   Out ) :: mapping
 
-    Call proc_mapping_init( comm )
+    Type( proc_mapping ) :: proc_mapping_base
+    
+    Call proc_mapping_init( comm, proc_mapping_base )
 
-!!$    matrix_mapping_base%descriptor   = INVALID
-    matrix_mapping_base%proc_mapping = proc_mapping_base
-    Call matrix_mapping_base%set( matrix_mapping_base%proc_mapping, &
+    Call mapping%set( proc_mapping_base, &
          INVALID, INVALID, &
          INVALID, INVALID, &
          INVALID, INVALID, &
@@ -63,8 +58,6 @@ Contains
 
   Subroutine matrix_mapping_finalise
 
-    matrix_mapping_base = matrix_mapping_base_start
-    
     Call proc_mapping_finalise
     
   End Subroutine matrix_mapping_finalise

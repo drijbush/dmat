@@ -2,8 +2,7 @@ Module distributed_matrix_module
 
   Use numbers_module       , Only : wp
   Use Scalapack_interfaces 
-  Use matrix_mapping_module, Only : matrix_mapping, matrix_mapping_base_start, matrix_mapping_base, &
-       matrix_mapping_init, matrix_mapping_finalise
+  Use matrix_mapping_module, Only : matrix_mapping, matrix_mapping_init, matrix_mapping_finalise
   
   Implicit None
 
@@ -23,8 +22,6 @@ Module distributed_matrix_module
    Contains
      Procedure :: create => matrix_create
   End type base_distributed_matrix
-
-  Type( base_distributed_matrix ), Public, Protected :: base_matrix !!!!!= base_matrix_start
 
   Type, Extends( base_distributed_matrix ), Public :: real_distributed_matrix
      Real( wp ), Dimension( :, : ), Allocatable :: data
@@ -50,13 +47,16 @@ Module distributed_matrix_module
 
 Contains
 
-  Subroutine distributed_matrix_init( comm )
+  Subroutine distributed_matrix_init( comm, base_matrix )
 
-    Integer, Intent( In ) :: comm
+    Class  ( base_distributed_matrix ), Intent(   Out ) :: base_matrix 
+    Integer                           , Intent( In    ) :: comm
 
-    Call matrix_mapping_init( comm )
+    Type( matrix_mapping ) :: base_matrix_mapping
+    
+    Call matrix_mapping_init( comm, base_matrix_mapping )
 
-    base_matrix%matrix_map = matrix_mapping_base
+    base_matrix%matrix_map = base_matrix_mapping
 
     base_matrix%global_to_local_rows = [ INVALID ]
     base_matrix%global_to_local_cols = [ INVALID ]
@@ -69,8 +69,6 @@ Contains
 
     Call matrix_mapping_finalise
     
-    base_matrix%matrix_map = matrix_mapping_base
-
   End Subroutine distributed_matrix_finalise
 
   Subroutine matrix_create( matrix, m, n, source_matrix )
@@ -97,8 +95,6 @@ Contains
     Call matrix%matrix_map%get_data( npcol = npcol, mypcol = mypcol )
     sda = numroc( n, nb, mypcol, 0, npcol )
 
-    Write( *, * ) mb, nb, lda, sda, myprow, mypcol, nprow, npcol
-    
     Call matrix%matrix_map%set( matrix%matrix_map%proc_mapping, m, n, mb, nb, 0, 0, lda )
 
     Select Type( matrix )
@@ -112,8 +108,13 @@ Contains
 
     Call set_local_to_global( matrix%local_to_global_rows, m, mb, myprow, nprow, lda )
     Call set_local_to_global( matrix%local_to_global_cols, n, nb, mypcol, npcol, sda )
+    Write( *, * ) 'l->g', m, mb, myprow, nprow, lda, matrix%local_to_global_rows
+    Write( *, * ) 'l->g', n, nb, mypcol, npcol, sda, matrix%local_to_global_cols
+
     Call set_global_to_local( matrix%global_to_local_rows, m, mb, myprow, nprow )
     Call set_global_to_local( matrix%global_to_local_cols, n, nb, mypcol, npcol )
+    Write( *, * ) 'g->l', m, mb, myprow, nprow, lda, matrix%global_to_local_rows
+    Write( *, * ) 'g->l', n, nb, mypcol, npcol, sda, matrix%global_to_local_cols
 
   End Subroutine matrix_create
 

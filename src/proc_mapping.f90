@@ -18,10 +18,6 @@ Module proc_mapping_module
      Generic  , Public  :: split => split_proc_mapping
   End Type proc_mapping
 
-  Type( proc_mapping ), Public, Parameter :: proc_mapping_base_start = proc_mapping( name = 'BASE_MAP', &
-       communicator = MPI_COMM_NULL, parent_communicator = MPI_COMM_NULL )      
-  Type( proc_mapping ), Public, Protected :: proc_mapping_base = proc_mapping_base_start
-
   Public :: proc_mapping_init
   Public :: proc_mapping_finalise
   
@@ -31,21 +27,20 @@ Module proc_mapping_module
 
 Contains
 
-  Subroutine proc_mapping_init( comm )
+  Subroutine proc_mapping_init( comm, mapping )
 
-    Integer, Intent( In ) :: comm
-
+    Integer             , Intent( In ) :: comm
+    Type( proc_mapping ), Intent(   Out ) :: mapping
+    
     Integer :: parent_communicator
 
     parent_communicator = MPI_COMM_NULL
 
-    Call proc_mapping_base%set( 'BASE_MAP', comm, parent_communicator )
+    Call mapping%set( 'BASE_MAP', comm, parent_communicator )
     
   End Subroutine proc_mapping_init
 
   Subroutine proc_mapping_finalise
-    
-    proc_mapping_base = proc_mapping_base_start
     
   End Subroutine proc_mapping_finalise
 
