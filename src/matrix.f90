@@ -467,16 +467,17 @@ Contains
     tmp_A = A%data
 
     ! Workspace size enquiry
-    Allocate( cwork( 1:1 ) )
+    Allocate( cwork( 1:1 ), rwork( 1:1 ), iwork( 1:1 ) )
     Call pzheevd( 'V', 'U', m, tmp_A, 1, 1, A%matrix_map%get_descriptor(), E, Q%data, 1, 1, Q%matrix_map%get_descriptor(), &
          cwork, -1, rwork, -1, iwork, 0, info )
     ncwork = Nint( Real( cwork( 1 ), wp ) )
     ncwork = ncwork * diag_work_size_fiddle_factor ! From experience ...
-    Deallocate( cwork )
-    Allocate( cwork( 1:ncwork ) )
     nrwork = Nint( rwork( 1 ) )
     nrwork = nrwork * diag_work_size_fiddle_factor ! From experience ...
+    Deallocate( cwork, rwork, iwork )
+    Allocate( cwork( 1:ncwork ) )
     Allocate( rwork( 1:nrwork ) )
+    ! Scalapack recipe is behind the strange numbers
     Allocate( iwork( 1:7 * m + 8 * npcol + 2 ) )
     ! Do the diag
     Call pzheevd( 'V', 'U', m, tmp_A, 1, 1, A%matrix_map%get_descriptor(), E, Q%data, 1, 1, Q%matrix_map%get_descriptor(), &
