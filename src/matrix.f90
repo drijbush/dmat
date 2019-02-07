@@ -6,8 +6,8 @@ Module distributed_matrix_module
   
   Implicit None
 
-  Integer, Parameter :: INVALID = -1
-  Integer, Parameter :: NOT_ME  = -2
+  Integer, Parameter :: distributed_matrix_INVALID = -1
+  Integer, Parameter :: distributed_matrix_NOT_ME  = -2
   
   Type, Abstract, Public :: distributed_matrix
      Type( matrix_mapping ) :: matrix_map
@@ -33,10 +33,11 @@ Module distributed_matrix_module
 
   Public :: distributed_matrix_init
   Public :: distributed_matrix_finalise
+  Public :: distributed_matrix_set_default_blocking
   
   Private
 
-  Integer, Parameter :: diag_work_size_fiddle_factor = 4 ! From experience Scalapack sometimes returns too small a work size
+  Integer, Parameter, Private :: diag_work_size_fiddle_factor = 4 ! From experience Scalapack sometimes returns too small a work size
   
   Integer, Parameter, Private :: default_block_fac = 4
   Integer,            Private :: block_fac = default_block_fac
@@ -54,10 +55,10 @@ Contains
 
     base_matrix%matrix_map = base_matrix_mapping
 
-    base_matrix%global_to_local_rows = [ INVALID ]
-    base_matrix%global_to_local_cols = [ INVALID ]
-    base_matrix%local_to_global_rows = [ INVALID ]
-    base_matrix%local_to_global_cols = [ INVALID ]
+    base_matrix%global_to_local_rows = [ distributed_matrix_INVALID ]
+    base_matrix%global_to_local_cols = [ distributed_matrix_INVALID ]
+    base_matrix%local_to_global_rows = [ distributed_matrix_INVALID ]
+    base_matrix%local_to_global_cols = [ distributed_matrix_INVALID ]
     
   End Subroutine distributed_matrix_init
 
@@ -66,6 +67,14 @@ Contains
     Call matrix_mapping_finalise
     
   End Subroutine distributed_matrix_finalise
+
+  Subroutine distributed_matrix_set_default_blocking( bfac )
+
+    Integer, Intent( In ) :: bfac
+
+    block_fac = bfac
+    
+  End Subroutine distributed_matrix_set_default_blocking
 
   Subroutine matrix_create( matrix, m, n, source_matrix )
 
@@ -153,7 +162,7 @@ Contains
 
     Allocate( glob_to_loc( 1:n ) )
 
-    glob_to_loc = NOT_ME
+    glob_to_loc = distributed_matrix_NOT_ME
     
     skip =  np * nb
 
