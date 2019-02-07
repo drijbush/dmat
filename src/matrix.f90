@@ -11,25 +11,21 @@ Module distributed_matrix_module
   
   Type, Abstract, Public :: distributed_matrix
      Type( matrix_mapping ) :: matrix_map
-     ! Will put in some printing stuff etc. here eventually
-  End type distributed_matrix
-
-  Type, Extends( distributed_matrix ), Public :: base_distributed_matrix
      Integer, Dimension( : ), Allocatable :: global_to_local_rows
      Integer, Dimension( : ), Allocatable :: global_to_local_cols
      Integer, Dimension( : ), Allocatable :: local_to_global_rows
      Integer, Dimension( : ), Allocatable :: local_to_global_cols
    Contains
      Procedure :: create => matrix_create
-  End type base_distributed_matrix
+  End type distributed_matrix
 
-  Type, Extends( base_distributed_matrix ), Public :: real_distributed_matrix
+  Type, Extends( distributed_matrix ), Public :: real_distributed_matrix
      Real( wp ), Dimension( :, : ), Allocatable :: data
    Contains
      Procedure :: diag => matrix_diag_real
   End type real_distributed_matrix
 
-  Type, Extends( base_distributed_matrix ), Public :: complex_distributed_matrix
+  Type, Extends( distributed_matrix ), Public :: complex_distributed_matrix
      Complex( wp ), Dimension( :, : ), Allocatable :: data
    Contains
      Procedure :: diag => matrix_diag_complex
@@ -49,8 +45,8 @@ Contains
 
   Subroutine distributed_matrix_init( comm, base_matrix )
 
-    Class  ( base_distributed_matrix ), Intent(   Out ) :: base_matrix 
-    Integer                           , Intent( In    ) :: comm
+    Class  ( distributed_matrix ), Intent(   Out ) :: base_matrix 
+    Integer                      , Intent( In    ) :: comm
 
     Type( matrix_mapping ) :: base_matrix_mapping
     
@@ -73,10 +69,10 @@ Contains
 
   Subroutine matrix_create( matrix, m, n, source_matrix )
 
-    Class( base_distributed_matrix ), Intent(   Out ) :: matrix
-    Integer                         , Intent( In    ) :: m
-    Integer                         , Intent( In    ) :: n
-    Class( base_distributed_matrix ), Intent( In    ) :: source_matrix
+    Class( distributed_matrix ), Intent(   Out ) :: matrix
+    Integer                    , Intent( In    ) :: m
+    Integer                    , Intent( In    ) :: n
+    Class( distributed_matrix ), Intent( In    ) :: source_matrix
 
     Integer :: nprow, myprow, mb, lda
     Integer :: npcol, mypcol, nb, sda
