@@ -22,6 +22,7 @@ Program dummy_main
   Call mpi_init( error )
 
   Call distributed_matrix_init( MPI_COMM_WORLD, base_matrix )
+  Call distributed_matrix_set_default_blocking( 3 )
 
 !!$  Call matrix_mapping_base%print()
 !!$  Call proc_mapping_base%split( [ 1, 2, 1, 2 ], 'k split', split_proc_map, i_hold )

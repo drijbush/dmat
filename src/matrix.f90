@@ -22,13 +22,17 @@ Module distributed_matrix_module
   Type, Extends( distributed_matrix ), Public :: real_distributed_matrix
      Real( wp ), Dimension( :, : ), Allocatable :: data
    Contains
-     Procedure :: diag => matrix_diag_real
+     Procedure :: diag          => matrix_diag_real
+     Procedure :: set_by_global => matrix_set_global_real
+     Procedure :: set_by_local  => matrix_set_local_real
   End type real_distributed_matrix
 
   Type, Extends( distributed_matrix ), Public :: complex_distributed_matrix
      Complex( wp ), Dimension( :, : ), Allocatable :: data
    Contains
-     Procedure :: diag => matrix_diag_complex
+     Procedure :: diag          => matrix_diag_complex
+     Procedure :: set_by_global => matrix_set_global_complex
+     Procedure :: set_by_local  => matrix_set_local_complex
   End type complex_distributed_matrix
 
   Public :: distributed_matrix_init
@@ -75,6 +79,92 @@ Contains
     block_fac = bfac
     
   End Subroutine distributed_matrix_set_default_blocking
+
+  Subroutine matrix_set_global_real( matrix, m, n, p, q, data )
+
+    ! Sets the data ( m:n, p:q ) in the global matrix
+
+    Class( real_distributed_matrix ), Intent( InOut ) :: matrix
+    Integer                         , Intent( In    ) :: m
+    Integer                         , Intent( In    ) :: n
+    Integer                         , Intent( In    ) :: p
+    Integer                         , Intent( In    ) :: q
+    Real( wp ), Dimension( m:, p: ) , Intent( In    ) :: data
+
+    Integer :: i_glob, j_glob
+    Integer :: i_loc , j_loc
+    
+    ! THIS NEEDS OPTIMISATION!!
+
+    Do j_glob = p, q
+       j_loc = matrix%global_to_local_cols( j_glob )
+       If( j_loc == distributed_matrix_NOT_ME ) Cycle
+       Do i_glob = m, n
+          i_loc = matrix%global_to_local_rows( i_glob )
+          If( i_loc == distributed_matrix_NOT_ME ) Cycle
+          matrix%data( i_loc, j_loc ) = data( j_glob, i_glob )
+       End Do
+    End Do
+       
+  End Subroutine matrix_set_global_real
+
+  Subroutine matrix_set_local_real( matrix, m, n, p, q, data )
+
+    ! Sets the data ( m:n, p:q ) in the local matrix
+
+    Class( real_distributed_matrix ), Intent( InOut ) :: matrix
+    Integer                         , Intent( In    ) :: m
+    Integer                         , Intent( In    ) :: n
+    Integer                         , Intent( In    ) :: p
+    Integer                         , Intent( In    ) :: q
+    Real( wp ), Dimension( m:, p: ) , Intent( In    ) :: data
+
+    matrix%data( m:n, p:q ) = data( m:n, p:q )
+    
+  End Subroutine matrix_set_local_real
+
+  Subroutine matrix_set_global_complex( matrix, m, n, p, q, data )
+
+    ! Sets the data ( m:n, p:q ) in the global matrix
+
+    Class( complex_distributed_matrix ), Intent( InOut ) :: matrix
+    Integer                            , Intent( In    ) :: m
+    Integer                            , Intent( In    ) :: n
+    Integer                            , Intent( In    ) :: p
+    Integer                            , Intent( In    ) :: q
+    Complex( wp ), Dimension( m:, p: ) , Intent( In    ) :: data
+
+    Integer :: i_glob, j_glob
+    Integer :: i_loc , j_loc
+    
+    ! THIS NEEDS OPTIMISATION!!
+
+    Do j_glob = p, q
+       j_loc = matrix%global_to_local_cols( j_glob )
+       If( j_loc == distributed_matrix_NOT_ME ) Cycle
+       Do i_glob = m, n
+          i_loc = matrix%global_to_local_rows( i_glob )
+          If( i_loc == distributed_matrix_NOT_ME ) Cycle
+          matrix%data( i_loc, j_loc ) = data( j_glob, i_glob )
+       End Do
+    End Do
+       
+  End Subroutine matrix_set_global_complex
+  
+  Subroutine matrix_set_local_complex( matrix, m, n, p, q, data )
+
+    ! Sets the data ( m:n, p:q ) in the local matrix
+
+    Class( complex_distributed_matrix ), Intent( InOut ) :: matrix
+    Integer                            , Intent( In    ) :: m
+    Integer                            , Intent( In    ) :: n
+    Integer                            , Intent( In    ) :: p
+    Integer                            , Intent( In    ) :: q
+    Complex( wp ), Dimension( m:, p: ) , Intent( In    ) :: data
+
+    matrix%data( m:n, p:q ) = data( m:n, p:q )
+    
+  End Subroutine matrix_set_local_complex
 
   Subroutine matrix_create( matrix, m, n, source_matrix )
 
