@@ -2,13 +2,14 @@ Program dummy_main
 
   Use mpi
 
+  Use numbers_module, Only : wp
   Use distributed_k_module
   Use proc_mapping_module
   Use matrix_mapping_module
   Use distributed_matrix_module
   
   Implicit None
-
+  
   Type( real_distributed_matrix ) :: base_matrix
 
   Integer :: n, nb
@@ -32,8 +33,8 @@ Program dummy_main
   Call distributed_matrix_set_default_blocking( 3 )
   Call distributed_matrix_init( MPI_COMM_WORLD, base_matrix )
 
-  Call test_real()
-  Call test_complex()
+  Call test_diag_real()
+  Call test_diag_complex()
   
   Call distributed_matrix_finalise
   
@@ -41,7 +42,7 @@ Program dummy_main
 
 Contains
 
-  Subroutine test_real()
+  Subroutine test_diag_real()
 
     Type ( real_distributed_matrix )              :: A
     Class( real_distributed_matrix ), Allocatable :: Q
@@ -52,12 +53,9 @@ Contains
 
     Integer :: unit = 10
 
-    Allocate( A_global( 1:n, 1:n ) )
-    
-    Call Random_number( A_global )
+    Call create_global_real( n, A_global, A )
     A_global = A_global + Transpose( A_global )
-    
-    Call A%create( n, n, base_matrix )
+
     Call A%set_by_global( 1, n, 1, n, A_global )
     Call A%diag( Q, E )
     
@@ -75,9 +73,9 @@ Contains
        Write( *, '( a, 1x, g24.16 )' ) 'Real    Case: Max absolute difference: ', Maxval( Abs( E - ev ) )
     End If
   
-  End Subroutine test_real
+  End Subroutine test_diag_real
   
-  Subroutine test_complex()
+  Subroutine test_diag_complex()
 
     Type ( complex_distributed_matrix )              :: A
     Class( complex_distributed_matrix ), Allocatable :: Q
@@ -86,23 +84,15 @@ Contains
     Complex( wp ), Dimension( :, : ), Allocatable :: A_global
     Complex( wp ), Dimension( :    ), Allocatable :: cwork
 
-    Real( wp ), Dimension( :, : ), Allocatable :: tmp1, tmp2
-
     Real( wp ), Dimension( : ), Allocatable :: rwork
     Real( wp ), Dimension( : ), Allocatable :: ev
 
     Integer :: unit = 10
 
-    Allocate( A_global( 1:n, 1:n ) )
-    Allocate( tmp1( 1:n, 1:n ) )
-    Allocate( tmp2( 1:n, 1:n ) )
+    Call create_global_complex( n, A_global, A )
     
-    Call Random_number( tmp1 )
-    Call Random_number( tmp2 )
-    A_global = Cmplx( tmp1, tmp2, wp )
     A_global = A_global + Conjg( Transpose( A_global ) )
     
-    Call A%create( n, n, base_matrix )
     Call A%set_by_global( 1, n, 1, n, A_global )
     Call A%diag( Q, E )
     
@@ -121,7 +111,43 @@ Contains
        Write( *, '( a, 1x, g24.16 )' ) 'Complex Case: Max absolute difference: ', Maxval( Abs( E - ev ) )
     End If
     
-  End Subroutine test_complex
+  End Subroutine test_diag_complex
   
-  
+  Subroutine create_global_real( n, A_g, A )
+
+    Integer                                     , Intent( In    ) :: n
+    Real( wp ), Dimension( :, :   ), Allocatable, Intent(   Out ) :: A_g
+    Type( real_distributed_matrix )             , Intent(   Out ) :: A
+
+    Allocate( A_g( 1:n, 1:n ) )
+    Call Random_number( A_g )
+    
+    Call A%create( n, n, base_matrix )
+    Call A%set_by_global( 1, n, 1, n, A_g )
+    
+  End Subroutine create_global_real
+
+  Subroutine create_global_complex( n, A_g, A )
+
+    Integer                                        , Intent( In    ) :: n
+    Complex( wp ), Dimension( :, :   ), Allocatable, Intent(   Out ) :: A_g
+    Type( complex_distributed_matrix )             , Intent(   Out ) :: A
+
+    Real( wp ), Dimension( :, : ), Allocatable :: tmp
+
+    Allocate( tmp( 1:n, 1:n ) )
+    
+    
+    Allocate( A_g( 1:n, 1:n ) )
+    Call Random_number( tmp )
+    A_g = tmp
+    Call Random_number( tmp )
+    A_g = A_g + Cmplx( 0.0_wp, tmp, wp )
+    
+    Call A%create( n, n, base_matrix )
+    Call A%set_by_global( 1, n, 1, n, A_g )
+    
+  End Subroutine create_global_complex
+
+
 End Program dummy_main
