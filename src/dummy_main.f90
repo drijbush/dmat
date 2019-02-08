@@ -17,7 +17,7 @@ Program dummy_main
   Integer :: error
 
   Integer :: rank
-  
+
   Call mpi_init( error )
   Call mpi_comm_rank( mpi_comm_world, rank, error )
 
@@ -73,7 +73,7 @@ Contains
        End Do
        Write( unit, '( a, 1x, g24.16 )' ) 'Max absolute difference: ', Maxval( Abs( E - ev ) )
        Close( unit )
-       Write( *, '( a, 1x, g24.16 )' ) 'Diag  :Real    Case: Max absolute difference: ', Maxval( Abs( E - ev ) )
+       Write( *, '( a, t64, g24.16 )' ) 'Diag  :Real    Case:             :Max absolute difference: ', Maxval( Abs( E - ev ) )
     End If
   
   End Subroutine test_diag_real
@@ -111,7 +111,7 @@ Contains
        End Do
        Write( unit, '( a, 1x, g24.16 )' ) 'Max absolute difference: ', Maxval( Abs( E - ev ) )
        Close( unit )
-       Write( *, '( a, 1x, g24.16 )' ) 'Diag  :Complex Case: Max absolute difference: ', Maxval( Abs( E - ev ) )
+       Write( *, '( a, t64, g24.16 )' ) 'Diag  :Complex Case:             :Max absolute difference: ', Maxval( Abs( E - ev ) )
     End If
     
   End Subroutine test_diag_complex
@@ -140,7 +140,7 @@ Contains
     C = A%pre_multiply( B )
     Call C%get_by_global( 1, n, 1, n, D_global )
     If( rank == 0 ) Then
-       Write( *, '( a, 1x, g24.16 )' ) 'Matmul:Real    Case:Transposes NN:Max absolute difference: ', &
+       Write( *, '( a, t64, g24.16 )' ) 'Matmul:Real    Case:Transposes NN:Max absolute difference: ', &
             Maxval( Abs( C_global - D_global ) )
     End If
 
@@ -149,7 +149,7 @@ Contains
     C = A%pre_multiply( B%transpose() )
     Call C%get_by_global( 1, n, 1, n, D_global )
     If( rank == 0 ) Then
-       Write( *, '( a, 1x, g24.16 )' ) 'Matmul:Real    Case:Transposes NT:Max absolute difference: ', &
+       Write( *, '( a, t64, g24.16 )' ) 'Matmul:Real    Case:Transposes NT:Max absolute difference: ', &
             Maxval( Abs( C_global - D_global ) )
     End If
 
@@ -159,7 +159,7 @@ Contains
     C = D%pre_multiply( B )
     Call C%get_by_global( 1, n, 1, n, D_global )
     If( rank == 0 ) Then
-       Write( *, '( a, 1x, g24.16 )' ) 'Matmul:Real    Case:Transposes TN:Max absolute difference: ', &
+       Write( *, '( a, t64, g24.16 )' ) 'Matmul:Real    Case:Transposes TN:Max absolute difference: ', &
             Maxval( Abs( C_global - D_global ) )
     End If
 
@@ -169,7 +169,7 @@ Contains
     C = D%pre_multiply( B%transpose() )
     Call C%get_by_global( 1, n, 1, n, D_global )
     If( rank == 0 ) Then
-       Write( *, '( a, 1x, g24.16 )' ) 'Matmul:Real    Case:Transposes TT:Max absolute difference: ', &
+       Write( *, '( a, t64, g24.16 )' ) 'Matmul:Real    Case:Transposes TT:Max absolute difference: ', &
             Maxval( Abs( C_global - D_global ) )
     End If
 
@@ -199,7 +199,7 @@ Contains
     C = A%pre_multiply( B )
     Call C%get_by_global( 1, n, 1, n, D_global )
     If( rank == 0 ) Then
-       Write( *, '( a, 1x, g24.16 )' ) 'Matmul:Complex Case:Daggers    NN:Max absolute difference: ', &
+       Write( *, '( a, t64, g24.16 )' ) 'Matmul:Complex Case:Daggers    NN:Max absolute difference: ', &
             Maxval( Abs( C_global - D_global ) )
     End If
 
@@ -208,7 +208,7 @@ Contains
     C = A%pre_multiply( B%dagger() )
     Call C%get_by_global( 1, n, 1, n, D_global )
     If( rank == 0 ) Then
-       Write( *, '( a, 1x, g24.16 )' ) 'Matmul:Complex Case:Daggers    NC:Max absolute difference: ', &
+       Write( *, '( a, t64, g24.16 )' ) 'Matmul:Complex Case:Daggers    NC:Max absolute difference: ', &
             Maxval( Abs( C_global - D_global ) )
     End If
 
@@ -218,7 +218,7 @@ Contains
     C = D%pre_multiply( B )
     Call C%get_by_global( 1, n, 1, n, D_global )
     If( rank == 0 ) Then
-       Write( *, '( a, 1x, g24.16 )' ) 'Matmul:Complex Case:Daggers    CN:Max absolute difference: ', &
+       Write( *, '( a, t64, g24.16 )' ) 'Matmul:Complex Case:Daggers    CN:Max absolute difference: ', &
             Maxval( Abs( C_global - D_global ) )
     End If
 
@@ -228,7 +228,7 @@ Contains
     C = D%pre_multiply( B%dagger() )
     Call C%get_by_global( 1, n, 1, n, D_global )
     If( rank == 0 ) Then
-       Write( *, '( a, 1x, g24.16 )' ) 'Matmul:Complex Case:Daggers    CC:Max absolute difference: ', &
+       Write( *, '( a, t64, g24.16 )' ) 'Matmul:Complex Case:Daggers    CC:Max absolute difference: ', &
             Maxval( Abs( C_global - D_global ) )
     End If
   End Subroutine test_matmul_complex
