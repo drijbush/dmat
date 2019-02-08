@@ -552,10 +552,10 @@ Contains
     End If
 
     Call matrix_create( C, m, n, A )
-
-    Call pdgemm( t1, t2, m, n, k, 1.0_wp, A, 1, 1, A%matrix_map%get_descriptor(), &
-                                          B, 1, 1, B%matrix_map%get_descriptor(), &
-                                  0.0_wp, C, 1, 1, C%matrix_map%get_descriptor() )
+    
+    Call pdgemm( t1, t2, m, n, k, 1.0_wp, A%data, 1, 1, A%matrix_map%get_descriptor(), &
+                                          B%data, 1, 1, B%matrix_map%get_descriptor(), &
+                                  0.0_wp, C%data, 1, 1, C%matrix_map%get_descriptor() )
     
   End Function matrix_pre_multiply_real
      
@@ -609,9 +609,9 @@ Contains
 
     Call matrix_create( C, m, n, A )
 
-    Call pdgemm( t1, t2, m, n, k, ( 1.0_wp, 0.0_wp ), A, 1, 1, A%matrix_map%get_descriptor(), &
-                                                      B, 1, 1, B%matrix_map%get_descriptor(), &
-                                  ( 0.0_wp, 0.0_wp ), C, 1, 1, C%matrix_map%get_descriptor() )
+    Call pzgemm( t1, t2, m, n, k, ( 1.0_wp, 0.0_wp ), A%data, 1, 1, A%matrix_map%get_descriptor(), &
+                                                      B%data, 1, 1, B%matrix_map%get_descriptor(), &
+                                  ( 0.0_wp, 0.0_wp ), C%data, 1, 1, C%matrix_map%get_descriptor() )
     
   End Function matrix_pre_multiply_complex
      

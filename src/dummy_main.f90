@@ -33,6 +33,9 @@ Program dummy_main
   Call distributed_matrix_set_default_blocking( 3 )
   Call distributed_matrix_init( MPI_COMM_WORLD, base_matrix )
 
+  Call test_matmul_real()
+  Call test_matmul_complex()
+
   Call test_diag_real()
   Call test_diag_complex()
   
@@ -70,7 +73,7 @@ Contains
        End Do
        Write( unit, '( a, 1x, g24.16 )' ) 'Max absolute difference: ', Maxval( Abs( E - ev ) )
        Close( unit )
-       Write( *, '( a, 1x, g24.16 )' ) 'Real    Case: Max absolute difference: ', Maxval( Abs( E - ev ) )
+       Write( *, '( a, 1x, g24.16 )' ) 'Diag  :Real    Case: Max absolute difference: ', Maxval( Abs( E - ev ) )
     End If
   
   End Subroutine test_diag_real
@@ -108,10 +111,64 @@ Contains
        End Do
        Write( unit, '( a, 1x, g24.16 )' ) 'Max absolute difference: ', Maxval( Abs( E - ev ) )
        Close( unit )
-       Write( *, '( a, 1x, g24.16 )' ) 'Complex Case: Max absolute difference: ', Maxval( Abs( E - ev ) )
+       Write( *, '( a, 1x, g24.16 )' ) 'Diag  :Complex Case: Max absolute difference: ', Maxval( Abs( E - ev ) )
     End If
     
   End Subroutine test_diag_complex
+
+  Subroutine test_matmul_real()
+
+    Type ( real_distributed_matrix ) :: A
+    Type ( real_distributed_matrix ) :: B
+    Type ( real_distributed_matrix ) :: C
+    
+    Real( wp ), Dimension( :, : ), Allocatable :: A_global
+    Real( wp ), Dimension( :, : ), Allocatable :: B_global
+    Real( wp ), Dimension( :, : ), Allocatable :: C_global
+    Real( wp ), Dimension( :, : ), Allocatable :: D_global
+
+    Call create_global_real( n, A_global, A )
+    Call create_global_real( n, B_global, B )
+
+    C_global = Matmul( A_global, B_global )
+
+    C = A%pre_multiply( B )
+
+    Allocate( D_global( 1:n, 1:n ) )
+    Call C%get_by_global( 1, n, 1, n, D_global )
+
+    If( rank == 0 ) Then
+       Write( *, '( a, 1x, g24.16 )' ) 'Matmul:Real    Case: Max absolute difference: ', Maxval( Abs( C_global - D_global ) )
+    End If
+
+  End Subroutine test_matmul_real
+  
+  Subroutine test_matmul_complex()
+
+    Type ( complex_distributed_matrix ) :: A
+    Type ( complex_distributed_matrix ) :: B
+    Type ( complex_distributed_matrix ) :: C
+    
+    Complex( wp ), Dimension( :, : ), Allocatable :: A_global
+    Complex( wp ), Dimension( :, : ), Allocatable :: B_global
+    Complex( wp ), Dimension( :, : ), Allocatable :: C_global
+    Complex( wp ), Dimension( :, : ), Allocatable :: D_global
+
+    Call create_global_complex( n, A_global, A )
+    Call create_global_complex( n, B_global, B )
+
+    C_global = Matmul( A_global, B_global )
+
+    C = A%pre_multiply( B )
+
+    Allocate( D_global( 1:n, 1:n ) )
+    Call C%get_by_global( 1, n, 1, n, D_global )
+
+    If( rank == 0 ) Then
+       Write( *, '( a, 1x, g24.16 )' ) 'Matmul:Complex Case: Max absolute difference: ', Maxval( Abs( C_global - D_global ) )
+    End If
+
+  End Subroutine test_matmul_complex
   
   Subroutine create_global_real( n, A_g, A )
 
@@ -136,7 +193,6 @@ Contains
     Real( wp ), Dimension( :, : ), Allocatable :: tmp
 
     Allocate( tmp( 1:n, 1:n ) )
-    
     
     Allocate( A_g( 1:n, 1:n ) )
     Call Random_number( tmp )
