@@ -1,5 +1,7 @@
 Module distributed_matrix_module
 
+  ! Container for data???
+
   Use mpi
   
   Use numbers_module       , Only : wp
@@ -33,7 +35,9 @@ Module distributed_matrix_module
      Procedure :: get_by_global => matrix_get_global_real
      Procedure :: get_by_local  => matrix_get_local_real
      Procedure :: transpose     => matrix_transpose_real
-     Procedure :: pre_multiply  => matrix_pre_multiply_real
+     Procedure :: multiply      => matrix_multiply_real
+     Generic   :: operator( * ) => multiply
+     Generic   :: operator( .Trans. ) => transpose
   End type real_distributed_matrix
 
   Type, Extends( distributed_matrix ), Public :: complex_distributed_matrix
@@ -46,7 +50,8 @@ Module distributed_matrix_module
      Procedure :: get_by_global => matrix_get_global_complex
      Procedure :: get_by_local  => matrix_get_local_complex
      Procedure :: dagger        => matrix_dagger_complex
-     Procedure :: pre_multiply  => matrix_pre_multiply_complex
+     Procedure :: multiply      => matrix_multiply_complex
+     Generic   :: operator( * ) => multiply
   End type complex_distributed_matrix
 
   Public :: distributed_matrix_init
@@ -514,7 +519,7 @@ Contains
 
   End Subroutine matrix_diag_complex
 
-  Function matrix_pre_multiply_real( A, B ) Result( C )
+  Function matrix_multiply_real( A, B ) Result( C )
 
     Class( real_distributed_matrix ), Allocatable :: C
 
@@ -559,7 +564,7 @@ Contains
        n = mb
        k = ma
     Else
-       Stop 'How did we get here in matrix_pre_multiply_real???'
+       Stop 'How did we get here in matrix_multiply_real???'
     End If
 
     Call matrix_create( C, m, n, A )
@@ -568,9 +573,9 @@ Contains
                                           B%data, 1, 1, B%matrix_map%get_descriptor(), &
                                   0.0_wp, C%data, 1, 1, C%matrix_map%get_descriptor() )
     
-  End Function matrix_pre_multiply_real
+  End Function matrix_multiply_real
      
-  Function matrix_pre_multiply_complex( A, B ) Result( C )
+  Function matrix_multiply_complex( A, B ) Result( C )
 
     Class( complex_distributed_matrix ), Allocatable :: C
 
@@ -615,7 +620,7 @@ Contains
        n = mb
        k = ma
     Else
-       Stop 'How did we get here in matrix_pre_multiply_complex???'
+       Stop 'How did we get here in matrix_multiply_complex???'
     End If
 
     Call matrix_create( C, m, n, A )
@@ -624,7 +629,7 @@ Contains
                                                       B%data, 1, 1, B%matrix_map%get_descriptor(), &
                                   ( 0.0_wp, 0.0_wp ), C%data, 1, 1, C%matrix_map%get_descriptor() )
     
-  End Function matrix_pre_multiply_complex
+  End Function matrix_multiply_complex
      
 End Module distributed_matrix_module
  
