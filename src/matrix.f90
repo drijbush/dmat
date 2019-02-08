@@ -26,7 +26,7 @@ Module distributed_matrix_module
   End type distributed_matrix
 
   Type, Extends( distributed_matrix ), Public :: real_distributed_matrix
-     Logical                                    :: transposed = .False.
+     Logical                                    :: daggered = .False.
      Real( wp ), Dimension( :, : ), Allocatable :: data
    Contains
      Procedure :: diag          => matrix_diag_real
@@ -34,10 +34,10 @@ Module distributed_matrix_module
      Procedure :: set_by_local  => matrix_set_local_real
      Procedure :: get_by_global => matrix_get_global_real
      Procedure :: get_by_local  => matrix_get_local_real
-     Procedure :: transpose     => matrix_transpose_real
+     Procedure :: dagger        => matrix_dagger_real
      Procedure :: multiply      => matrix_multiply_real
      Generic   :: operator( * ) => multiply
-     Generic   :: operator( .Trans. ) => transpose
+     Generic   :: operator( .Trans. ) => dagger
   End type real_distributed_matrix
 
   Type, Extends( distributed_matrix ), Public :: complex_distributed_matrix
@@ -200,16 +200,16 @@ Contains
     
   End Subroutine matrix_create
 
-  Pure Function matrix_transpose_real( matrix ) Result( tm )
+  Pure Function matrix_dagger_real( matrix ) Result( tm )
 
     Class( real_distributed_matrix ), Allocatable :: tm
 
     Class( real_distributed_matrix ), Intent( In ) :: matrix
 
     Allocate( tm, Source = matrix )
-    tm%transposed = .Not. tm%transposed
+    tm%daggered = .Not. tm%daggered
     
-  End Function matrix_transpose_real
+  End Function matrix_dagger_real
 
   Pure Function matrix_dagger_complex( matrix ) Result( dm )
 
@@ -539,10 +539,10 @@ Contains
     Deallocate( C%local_to_global_cols )
     Deallocate( C%global_to_local_rows )
     Deallocate( C%global_to_local_cols )
-    C%transposed = .False.
+    C%daggered = .False.
 
-    t1 = Merge( 'T', 'N', A%transposed )
-    t2 = Merge( 'T', 'N', B%transposed )
+    t1 = Merge( 'T', 'N', A%daggered )
+    t2 = Merge( 'T', 'N', B%daggered )
 
     Call A%matrix_map%get_data( m = ma, n = na )
     Call B%matrix_map%get_data( m = mb, n = nb )

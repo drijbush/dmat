@@ -67,7 +67,7 @@ Contains
     Call A%diag( Q, E )
 
     QT = Q
-    QT = QT%transpose()
+    QT = QT%dagger()
     B = QT%multiply( A )
     C = B%multiply( Q )
     Allocate( tmp( 1:n, 1:n ) )
@@ -176,7 +176,7 @@ Contains
 
     !NT
     C_global = Matmul( A_global, Transpose( B_global ) )
-    C = A%multiply( B%transpose() )
+    C = A%multiply( B%dagger() )
     Call C%get_by_global( 1, n, 1, n, D_global )
     If( rank == 0 ) Then
        Write( *, '( a, t64, g24.16 )' ) 'Matmul:Real    Case:Transposes NT:Max absolute difference: ', &
@@ -185,7 +185,7 @@ Contains
 
     !TN
     C_global = Matmul( Transpose( A_global ), B_global )
-    D = A%transpose()
+    D = A%dagger()
     C = D%multiply( B )
     Call C%get_by_global( 1, n, 1, n, D_global )
     If( rank == 0 ) Then
@@ -195,8 +195,8 @@ Contains
 
     !TT
     C_global = Matmul( Transpose( A_global ), Transpose( B_global ) )
-    D = A%transpose()
-    C = D%multiply( B%transpose() )
+    D = A%dagger()
+    C = D%multiply( B%dagger() )
     Call C%get_by_global( 1, n, 1, n, D_global )
     If( rank == 0 ) Then
        Write( *, '( a, t64, g24.16 )' ) 'Matmul:Real    Case:Transposes TT:Max absolute difference: ', &
@@ -244,7 +244,7 @@ Contains
 !!$
 !!$    !TN
 !!$    C_global = Matmul( Transpose( A_global ), B_global )
-!!$    C = A%transpose() * B
+!!$    C = A%dagger() * B
 !!$    Call C%get_by_global( 1, n, 1, n, D_global )
 !!$    If( rank == 0 ) Then
 !!$       Write( *, '( a, t64, g24.16 )' ) 'Matmul:Real    Case:Transposes TN:Max absolute difference: ', &
