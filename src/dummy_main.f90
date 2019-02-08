@@ -121,6 +121,7 @@ Contains
     Type ( real_distributed_matrix ) :: A
     Type ( real_distributed_matrix ) :: B
     Type ( real_distributed_matrix ) :: C
+    Type ( real_distributed_matrix ) :: D
     
     Real( wp ), Dimension( :, : ), Allocatable :: A_global
     Real( wp ), Dimension( :, : ), Allocatable :: B_global
@@ -130,15 +131,46 @@ Contains
     Call create_global_real( n, A_global, A )
     Call create_global_real( n, B_global, B )
 
-    C_global = Matmul( A_global, B_global )
-
-    C = A%pre_multiply( B )
-
     Allocate( D_global( 1:n, 1:n ) )
-    Call C%get_by_global( 1, n, 1, n, D_global )
 
+    ! Checks on Various Tranposes
+
+    !NN
+    C_global = Matmul( A_global, B_global )
+    C = A%pre_multiply( B )
+    Call C%get_by_global( 1, n, 1, n, D_global )
     If( rank == 0 ) Then
-       Write( *, '( a, 1x, g24.16 )' ) 'Matmul:Real    Case: Max absolute difference: ', Maxval( Abs( C_global - D_global ) )
+       Write( *, '( a, 1x, g24.16 )' ) 'Matmul:Real    Case:Transposes NN:Max absolute difference: ', &
+            Maxval( Abs( C_global - D_global ) )
+    End If
+
+    !NT
+    C_global = Matmul( A_global, Transpose( B_global ) )
+    C = A%pre_multiply( B%transpose() )
+    Call C%get_by_global( 1, n, 1, n, D_global )
+    If( rank == 0 ) Then
+       Write( *, '( a, 1x, g24.16 )' ) 'Matmul:Real    Case:Transposes NT:Max absolute difference: ', &
+            Maxval( Abs( C_global - D_global ) )
+    End If
+
+    !TN
+    C_global = Matmul( Transpose( A_global ), B_global )
+    D = A%transpose()
+    C = D%pre_multiply( B )
+    Call C%get_by_global( 1, n, 1, n, D_global )
+    If( rank == 0 ) Then
+       Write( *, '( a, 1x, g24.16 )' ) 'Matmul:Real    Case:Transposes TN:Max absolute difference: ', &
+            Maxval( Abs( C_global - D_global ) )
+    End If
+
+    !TT
+    C_global = Matmul( Transpose( A_global ), Transpose( B_global ) )
+    D = A%transpose()
+    C = D%pre_multiply( B%transpose() )
+    Call C%get_by_global( 1, n, 1, n, D_global )
+    If( rank == 0 ) Then
+       Write( *, '( a, 1x, g24.16 )' ) 'Matmul:Real    Case:Transposes TT:Max absolute difference: ', &
+            Maxval( Abs( C_global - D_global ) )
     End If
 
   End Subroutine test_matmul_real
@@ -148,6 +180,7 @@ Contains
     Type ( complex_distributed_matrix ) :: A
     Type ( complex_distributed_matrix ) :: B
     Type ( complex_distributed_matrix ) :: C
+    Type ( complex_distributed_matrix ) :: D
     
     Complex( wp ), Dimension( :, : ), Allocatable :: A_global
     Complex( wp ), Dimension( :, : ), Allocatable :: B_global
@@ -157,17 +190,47 @@ Contains
     Call create_global_complex( n, A_global, A )
     Call create_global_complex( n, B_global, B )
 
-    C_global = Matmul( A_global, B_global )
-
-    C = A%pre_multiply( B )
-
     Allocate( D_global( 1:n, 1:n ) )
-    Call C%get_by_global( 1, n, 1, n, D_global )
 
+    ! Checks on Various Daggers
+
+    !NN
+    C_global = Matmul( A_global, B_global )
+    C = A%pre_multiply( B )
+    Call C%get_by_global( 1, n, 1, n, D_global )
     If( rank == 0 ) Then
-       Write( *, '( a, 1x, g24.16 )' ) 'Matmul:Complex Case: Max absolute difference: ', Maxval( Abs( C_global - D_global ) )
+       Write( *, '( a, 1x, g24.16 )' ) 'Matmul:Complex Case:Daggers    NN:Max absolute difference: ', &
+            Maxval( Abs( C_global - D_global ) )
     End If
 
+    !NC
+    C_global = Matmul( A_global, Conjg( Transpose( B_global ) ) )
+    C = A%pre_multiply( B%dagger() )
+    Call C%get_by_global( 1, n, 1, n, D_global )
+    If( rank == 0 ) Then
+       Write( *, '( a, 1x, g24.16 )' ) 'Matmul:Complex Case:Daggers    NC:Max absolute difference: ', &
+            Maxval( Abs( C_global - D_global ) )
+    End If
+
+    !CN
+    C_global = Matmul( Conjg( Transpose( A_global ) ), B_global )
+    D = A%dagger()
+    C = D%pre_multiply( B )
+    Call C%get_by_global( 1, n, 1, n, D_global )
+    If( rank == 0 ) Then
+       Write( *, '( a, 1x, g24.16 )' ) 'Matmul:Complex Case:Daggers    CN:Max absolute difference: ', &
+            Maxval( Abs( C_global - D_global ) )
+    End If
+
+    !CC
+    C_global = Matmul( Conjg( Transpose( A_global ) ), Conjg( Transpose( B_global ) ) )
+    D = A%dagger()
+    C = D%pre_multiply( B%dagger() )
+    Call C%get_by_global( 1, n, 1, n, D_global )
+    If( rank == 0 ) Then
+       Write( *, '( a, 1x, g24.16 )' ) 'Matmul:Complex Case:Daggers    CC:Max absolute difference: ', &
+            Maxval( Abs( C_global - D_global ) )
+    End If
   End Subroutine test_matmul_complex
   
   Subroutine create_global_real( n, A_g, A )

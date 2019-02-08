@@ -14,7 +14,6 @@ Module distributed_matrix_module
   
   Type, Abstract, Public :: distributed_matrix
      Type( matrix_mapping )               :: matrix_map
-     Logical                              :: transposed = .False.
      Integer, Dimension( : ), Allocatable :: global_to_local_rows
      Integer, Dimension( : ), Allocatable :: global_to_local_cols
      Integer, Dimension( : ), Allocatable :: local_to_global_rows
@@ -22,10 +21,10 @@ Module distributed_matrix_module
    Contains
      Procedure :: create    => matrix_create
      Procedure :: get_maps  => matrix_get_maps
-     Procedure :: transpose => matrix_transpose
   End type distributed_matrix
 
   Type, Extends( distributed_matrix ), Public :: real_distributed_matrix
+     Logical                                    :: transposed = .False.
      Real( wp ), Dimension( :, : ), Allocatable :: data
    Contains
      Procedure :: diag          => matrix_diag_real
@@ -33,10 +32,12 @@ Module distributed_matrix_module
      Procedure :: set_by_local  => matrix_set_local_real
      Procedure :: get_by_global => matrix_get_global_real
      Procedure :: get_by_local  => matrix_get_local_real
+     Procedure :: transpose     => matrix_transpose_real
      Procedure :: pre_multiply  => matrix_pre_multiply_real
   End type real_distributed_matrix
 
   Type, Extends( distributed_matrix ), Public :: complex_distributed_matrix
+     Logical                                       :: daggered = .False.
      Complex( wp ), Dimension( :, : ), Allocatable :: data
    Contains
      Procedure :: diag          => matrix_diag_complex
@@ -44,6 +45,7 @@ Module distributed_matrix_module
      Procedure :: set_by_local  => matrix_set_local_complex
      Procedure :: get_by_global => matrix_get_global_complex
      Procedure :: get_by_local  => matrix_get_local_complex
+     Procedure :: dagger        => matrix_dagger_complex
      Procedure :: pre_multiply  => matrix_pre_multiply_complex
   End type complex_distributed_matrix
 
@@ -117,8 +119,6 @@ Contains
 
     Call source_matrix%matrix_map%get_data( ctxt = ctxt )
 
-    matrix%transposed = .False.
-    
     Call matrix%matrix_map%set( matrix%matrix_map%proc_mapping, ctxt, m, n, mb, nb, 0, 0, lda )
 
     Call set_local_to_global( matrix%local_to_global_rows, m, mb, myprow, nprow, lda )
@@ -195,16 +195,27 @@ Contains
     
   End Subroutine matrix_create
 
-  Pure Function matrix_transpose( matrix ) Result( tm )
+  Pure Function matrix_transpose_real( matrix ) Result( tm )
 
-    Class( distributed_matrix ), Allocatable :: tm
+    Class( real_distributed_matrix ), Allocatable :: tm
 
-    Class( distributed_matrix ), Intent( In ) :: matrix
+    Class( real_distributed_matrix ), Intent( In ) :: matrix
 
     Allocate( tm, Source = matrix )
     tm%transposed = .Not. tm%transposed
     
-  End Function matrix_transpose
+  End Function matrix_transpose_real
+
+  Pure Function matrix_dagger_complex( matrix ) Result( dm )
+
+    Class( complex_distributed_matrix ), Allocatable :: dm
+
+    Class( complex_distributed_matrix ), Intent( In ) :: matrix
+
+    Allocate( dm, Source = matrix )
+    dm%daggered = .Not. dm%daggered
+    
+  End Function matrix_dagger_complex
 
   Subroutine matrix_set_global_real( matrix, m, n, p, q, data )
 
@@ -579,10 +590,10 @@ Contains
     Deallocate( C%local_to_global_cols )
     Deallocate( C%global_to_local_rows )
     Deallocate( C%global_to_local_cols )
-    C%transposed = .False.
+    C%daggered = .False.
 
-    t1 = Merge( 'T', 'N', A%transposed )
-    t2 = Merge( 'T', 'N', B%transposed )
+    t1 = Merge( 'C', 'N', A%daggered )
+    t2 = Merge( 'C', 'N', B%daggered )
 
     Call A%matrix_map%get_data( m = ma, n = na )
     Call B%matrix_map%get_data( m = mb, n = nb )
@@ -591,15 +602,15 @@ Contains
        m = ma
        n = nb
        k = na
-    Else If( t1 == 'T' .And. t2 == 'N' ) Then
+    Else If( t1 == 'C' .And. t2 == 'N' ) Then
        m = na
        n = nb
        k = ma
-    Else If( t1 == 'N' .And. t2 == 'T' ) Then
+    Else If( t1 == 'N' .And. t2 == 'C' ) Then
        m = ma
        n = mb
        k = na
-    Else If( t1 == 'T' .And. t2 == 'T' ) Then
+    Else If( t1 == 'C' .And. t2 == 'C' ) Then
        m = na
        n = mb
        k = ma
