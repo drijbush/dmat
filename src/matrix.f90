@@ -1,6 +1,6 @@
 Module distributed_matrix_module
 
-  ! Container for data???
+  ! General thoughts: Container for data and overload for unified data type???
 
   Use mpi
   
@@ -37,7 +37,6 @@ Module distributed_matrix_module
      Procedure :: dagger        => matrix_dagger_real
      Procedure :: multiply      => matrix_multiply_real
      Generic   :: operator( * ) => multiply
-     Generic   :: operator( .Trans. ) => dagger
   End type real_distributed_matrix
 
   Type, Extends( distributed_matrix ), Public :: complex_distributed_matrix
@@ -69,8 +68,8 @@ Contains
 
   Subroutine distributed_matrix_init( comm, base_matrix )
 
-    Class  ( distributed_matrix ), Intent(   Out ) :: base_matrix 
     Integer                      , Intent( In    ) :: comm
+    Class  ( distributed_matrix ), Intent(   Out ) :: base_matrix 
 
     Type( matrix_mapping ) :: base_matrix_mapping
     
@@ -630,6 +629,6 @@ Contains
                                   ( 0.0_wp, 0.0_wp ), C%data, 1, 1, C%matrix_map%get_descriptor() )
     
   End Function matrix_multiply_complex
-     
+
 End Module distributed_matrix_module
  
