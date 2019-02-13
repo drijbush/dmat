@@ -41,7 +41,7 @@ Contains
 
   Subroutine matrix_mapping_init( comm, mapping )
 
-    Integer               , Intent( In ) :: comm
+    Integer               , Intent( In    ) :: comm
     Type( matrix_mapping ), Intent(   Out ) :: mapping
 
     Type( proc_mapping ) :: proc_mapping_base

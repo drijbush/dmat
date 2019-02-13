@@ -69,31 +69,59 @@ Contains
     
   End Subroutine distributed_k_matrix_create
 
-!!$  Subroutine distributed_k_matrix_diag( A, Q )
-!!$    
-!!$    Class( distributed_k_matrix )             , Intent( In    ) :: A
-!!$    Class( distributed_k_matrix ), Allocatable, Intent(   Out ) :: Q
-!!$
-!!$    Allocate( k_wave_function  :: Q%k_point )
-!!$
-!!$    Associate( kA => A%k_point, kQ => Q%k_point, kAm => A%k_point%matrix )
-!!$
-!!$      Select Type( kQ ) !! hack!!!!
-!!$      Class Default
-!!$         Stop "Illegal type  in distributed_k_matrix_diag"
-!!$      Class is ( k_wave_function  )
-!!$         Select Type( kAm )
-!!$         Class Default
-!!$            Stop "Illegal type  in distributed_k_matrix_diag"
-!!$         Class is ( real_distributed_matrix )
-!!$            Call kAm%diag( kQ%matrix, kQ%evals )
-!!$         End Select
-!!$      End Select
-!!$      
-!!$    End Associate
-!!$
-!!$      
-!!$  End Subroutine distributed_k_matrix_diag
+  Subroutine distributed_k_matrix_diag( A, Q )
+    
+    Class( distributed_k_matrix ), Intent( In    ) :: A
+    Type ( distributed_k_matrix ), Intent(   Out ) :: Q
+
+    Type( real_distributed_matrix ), Allocatable :: Br
+    Type( complex_distributed_matrix ), Allocatable :: Bc
+
+    Real( wp ), Dimension( : ), Allocatable  :: evals
+    
+    Allocate( k_wave_function  :: Q%k_point )
+
+    Associate( kA => A%k_point, kQ => Q%k_point, &
+         kAm => A%k_point%matrix, kQm => Q%k_point%matrix )
+
+      Select Type( kQ ) !! hack!!!!
+
+      Class Default
+         Stop "Illegal type  in distributed_k_matrix_diag"
+
+      Class is ( k_wave_function  )
+
+         Select Type( kAm )
+
+         Class Default
+            Stop "Illegal type  in distributed_k_matrix_diag"
+
+         Class is ( real_distributed_matrix )
+
+            Select Type( kQm )
+            Class Default
+               Stop "Illegal type  in distributed_k_matrix_diag"
+            Class is ( real_distributed_matrix )
+               Call kAm%diag( Br, evals )
+               Allocate( Q%k_point%matrix, source = Br )
+               kQ%evals  = evals
+            End Select
+
+         Class is ( complex_distributed_matrix )
+            Select Type( kQm )
+            Class Default
+               Stop "Illegal type  in distributed_k_matrix_diag"
+            Class is ( real_distributed_matrix )
+               Call kAm%diag( Bc, evals )
+               Allocate( Q%k_point%matrix, source = Bc )
+               kQ%evals  = evals
+            End Select
+         End Select
+      End Select
+      
+    End Associate
+
+  End Subroutine distributed_k_matrix_diag
   
   Subroutine distributed_k_matrix_finalize
 

@@ -33,7 +33,7 @@ Program dummy_main
   Call distributed_matrix_init( MPI_COMM_WORLD, base_matrix )
 
   Call test_matmul_real()
-!!$  Call test_matmul_real_ops() ! Internal compiler error in gcc 5.4
+  Call test_matmul_real_ops() ! Internal compiler error in gcc 5.4
   Call test_matmul_complex()
 
   Call test_diag_real()
@@ -47,9 +47,9 @@ Contains
 
   Subroutine test_diag_real()
 
-    Type ( real_distributed_matrix )              :: A
-    Class( real_distributed_matrix ), Allocatable :: Q
-    Real( wp ), Dimension( : )      , Allocatable :: E
+    Type( real_distributed_matrix )              :: A
+    Type( real_distributed_matrix ), Allocatable :: Q
+    Real( wp ), Dimension( : )     , Allocatable :: E
 
     Type( real_distributed_matrix )              :: QT, B, C
     
@@ -95,9 +95,9 @@ Contains
   
   Subroutine test_diag_complex()
 
-    Type ( complex_distributed_matrix )              :: A
-    Class( complex_distributed_matrix ), Allocatable :: Q
-    Real( wp ), Dimension( : )         , Allocatable :: E
+    Type( complex_distributed_matrix )              :: A
+    Type( complex_distributed_matrix ), Allocatable :: Q
+    Real( wp ), Dimension( : )        , Allocatable :: E
     
     Type( complex_distributed_matrix )              :: QT, B, C
 
@@ -206,61 +206,64 @@ Contains
   End Subroutine test_matmul_real
   
   ! Broken in gcc 5.4 - internal compiler error
-!!$  Subroutine test_matmul_real_ops()
-!!$
-!!$    Type ( real_distributed_matrix ) :: A
-!!$    Type ( real_distributed_matrix ) :: B
-!!$    Type ( real_distributed_matrix ) :: C
-!!$    
-!!$    Real( wp ), Dimension( :, : ), Allocatable :: A_global
-!!$    Real( wp ), Dimension( :, : ), Allocatable :: B_global
-!!$    Real( wp ), Dimension( :, : ), Allocatable :: C_global
-!!$    Real( wp ), Dimension( :, : ), Allocatable :: D_global
-!!$
-!!$    Call create_global_real( n, A_global, A )
-!!$    Call create_global_real( n, B_global, B )
-!!$
-!!$    Allocate( D_global( 1:n, 1:n ) )
-!!$
-!!$    ! Checks on Various Tranposes
-!!$
-!!$    !NN
-!!$    C_global = Matmul( A_global, B_global )
-!!$    C = A * B
-!!$    Call C%get_by_global( 1, n, 1, n, D_global )
-!!$    If( rank == 0 ) Then
-!!$       Write( *, '( a, t64, g24.16 )' ) 'Matmul:Real    Case:Transposes NN:Max absolute difference: ', &
-!!$            Maxval( Abs( C_global - D_global ) )
-!!$    End If
-!!$
-!!$    !NT
-!!$    C_global = Matmul( A_global, Transpose( B_global ) )
-!!$    C = A * .Trans. B
-!!$    Call C%get_by_global( 1, n, 1, n, D_global )
-!!$    If( rank == 0 ) Then
-!!$       Write( *, '( a, t64, g24.16 )' ) 'Matmul:Real    Case:Transposes NT:Max absolute difference: ', &
-!!$            Maxval( Abs( C_global - D_global ) )
-!!$    End If
-!!$
-!!$    !TN
-!!$    C_global = Matmul( Transpose( A_global ), B_global )
-!!$    C = A%dagger() * B
-!!$    Call C%get_by_global( 1, n, 1, n, D_global )
-!!$    If( rank == 0 ) Then
-!!$       Write( *, '( a, t64, g24.16 )' ) 'Matmul:Real    Case:Transposes TN:Max absolute difference: ', &
-!!$            Maxval( Abs( C_global - D_global ) )
-!!$    End If
-!!$
-!!$    !TT
-!!$    C_global = Matmul( Transpose( A_global ), Transpose( B_global ) )
-!!$    C = ( .Trans. A ) * ( .Trans. B )
-!!$    Call C%get_by_global( 1, n, 1, n, D_global )
-!!$    If( rank == 0 ) Then
-!!$       Write( *, '( a, t64, g24.16 )' ) 'Matmul:Real    Case:Transposes TT:Max absolute difference: ', &
-!!$            Maxval( Abs( C_global - D_global ) )
-!!$    End If
-!!$
-!!$  End Subroutine test_matmul_real_ops
+  Subroutine test_matmul_real_ops()
+
+    Type ( real_distributed_matrix ) :: A
+    Type ( real_distributed_matrix ) :: B
+    Type ( real_distributed_matrix ) :: C
+    Type ( real_distributed_matrix ) :: D
+    
+    Real( wp ), Dimension( :, : ), Allocatable :: A_global
+    Real( wp ), Dimension( :, : ), Allocatable :: B_global
+    Real( wp ), Dimension( :, : ), Allocatable :: C_global
+    Real( wp ), Dimension( :, : ), Allocatable :: D_global
+
+    Call create_global_real( n, A_global, A )
+    Call create_global_real( n, B_global, B )
+
+    Allocate( D_global( 1:n, 1:n ) )
+
+    ! Checks on Various Tranposes
+
+    !NN
+    C_global = Matmul( A_global, B_global )
+    C = A * B
+    Call C%get_by_global( 1, n, 1, n, D_global )
+    If( rank == 0 ) Then
+       Write( *, '( a, t64, g24.16 )' ) 'Matmul:Real    Case:Transposes NN:Max absolute difference: ', &
+            Maxval( Abs( C_global - D_global ) )
+    End If
+
+    !NT
+    C_global = Matmul( A_global, Transpose( B_global ) )
+    C = A * .Dagger. B
+    Call C%get_by_global( 1, n, 1, n, D_global )
+    If( rank == 0 ) Then
+       Write( *, '( a, t64, g24.16 )' ) 'Matmul:Real    Case:Transposes NT:Max absolute difference: ', &
+            Maxval( Abs( C_global - D_global ) )
+    End If
+
+    !TN
+    C_global = Matmul( Transpose( A_global ), B_global )
+    D = .Dagger. A
+    C = D * B
+    Call C%get_by_global( 1, n, 1, n, D_global )
+    If( rank == 0 ) Then
+       Write( *, '( a, t64, g24.16 )' ) 'Matmul:Real    Case:Transposes TN:Max absolute difference: ', &
+            Maxval( Abs( C_global - D_global ) )
+    End If
+
+    !TT
+    C_global = Matmul( Transpose( A_global ), Transpose( B_global ) )
+    D = .Dagger. A
+    C = D * ( .Dagger. B )
+    Call C%get_by_global( 1, n, 1, n, D_global )
+    If( rank == 0 ) Then
+       Write( *, '( a, t64, g24.16 )' ) 'Matmul:Real    Case:Transposes TT:Max absolute difference: ', &
+            Maxval( Abs( C_global - D_global ) )
+    End If
+
+  End Subroutine test_matmul_real_ops
   
   Subroutine test_matmul_complex()
 
