@@ -5,7 +5,6 @@ Module distributed_k_module
   Use numbers_module       , Only : wp
   Use distributed_matrix_module, Only : distributed_matrix, real_distributed_matrix, complex_distributed_matrix, &
        distributed_matrix_init, distributed_matrix_finalise
-
   Implicit None
 
   Type, Private :: k_point_matrix
@@ -21,12 +20,33 @@ Module distributed_k_module
   Type, Public :: distributed_k_matrix
      Class( k_point_matrix ), Allocatable :: k_point
    Contains
-     Procedure :: create        => distributed_k_matrix_create
-!!$     Procedure :: diag          => distributed_k_matrix_diag
+     Procedure          :: create               => distributed_k_matrix_create
+     Procedure          :: dagger               => distributed_k_matrix_dagger
+     Generic            :: operator( .Dagger. ) => dagger
+     Procedure          :: diag                 => distributed_k_matrix_diag
+     Procedure          :: multiply             => distributed_k_matrix_mult
+     Generic            :: operator( * )        => multiply
+     Procedure, Private :: sgr                  => set_global_real
+     Procedure, Private :: sgc                  => set_global_complex
+     Generic            :: set_by_global        => sgr, sgc
+     Procedure, Private :: slr                  => set_local_real
+     Procedure, Private :: slc                  => set_local_complex
+     Generic            :: set_by_local         => slr, slc
+     Procedure, Private :: ggr                  => get_global_real
+     Procedure, Private :: ggc                  => get_global_complex
+     Generic            :: get_by_global        => ggr, ggc
+     Procedure, Private :: glr                  => get_local_real
+     Procedure, Private :: glc                  => get_local_complex
+     Generic            :: get_by_local         => glr, glc
   End Type distributed_k_matrix
   
   ! a) Set up base matrix which is 1 matrix across all
   ! b) Provide splits
+
+  Public :: distributed_k_matrix_init
+  Public :: distributed_k_matrix_finalise
+  
+!!$  Private
 
   Integer, Parameter :: INVALID = -1
 
@@ -37,6 +57,8 @@ Contains
     Integer                        , Intent( In    ) :: comm
     Type   ( distributed_k_matrix ), Intent(   Out ) :: base_matrix
 
+    Allocate( k_point_matrix:: base_matrix%k_point )
+
     base_matrix%k_point%this_spin    = INVALID
     base_matrix%k_point%this_k_point = INVALID
 
@@ -46,6 +68,12 @@ Contains
     
   End Subroutine distributed_k_matrix_init
 
+  Subroutine distributed_k_matrix_finalise
+
+    Call distributed_matrix_finalise
+    
+  End Subroutine distributed_k_matrix_finalise
+  
   Subroutine distributed_k_matrix_create( matrix, is_complex, this_spin, this_k_point, m, n, source_matrix )
 
     Class  ( distributed_k_matrix ), Intent(   Out ) :: matrix
@@ -54,7 +82,9 @@ Contains
     Integer, Dimension( 1:3 )      , Intent( In    ) :: this_k_point
     Integer                        , Intent( In    ) :: m
     Integer                        , Intent( In    ) :: n
-    Type   ( distributed_k_matrix ), Intent(   Out ) :: source_matrix
+    Type   ( distributed_k_matrix ), Intent( In    ) :: source_matrix
+
+    Allocate( k_point_matrix:: matrix%k_point )
 
     If( is_complex ) Then
       Allocate( complex_distributed_matrix :: matrix%k_point%matrix ) 
@@ -64,69 +94,350 @@ Contains
 
     matrix%k_point%this_spin    = this_spin
     matrix%k_point%this_k_point = this_k_point
-    
+
     Call matrix%k_point%matrix%create( m, n, source_matrix%k_point%matrix )
     
   End Subroutine distributed_k_matrix_create
 
-  Subroutine distributed_k_matrix_diag( A, Q )
+  Subroutine distributed_k_matrix_diag( A, Q, evals )
     
-    Class( distributed_k_matrix ), Intent( In    ) :: A
-    Type ( distributed_k_matrix ), Intent(   Out ) :: Q
+    Class( distributed_k_matrix )          , Intent( In    ) :: A
+    Type ( distributed_k_matrix )          , Intent(   Out ) :: Q
+    Real( wp ), Dimension( : ), Allocatable, Intent(   Out ) :: evals
 
-    Type( real_distributed_matrix ), Allocatable :: Br
-    Type( complex_distributed_matrix ), Allocatable :: Bc
-
-    Real( wp ), Dimension( : ), Allocatable  :: evals
+    Type(    real_distributed_matrix ), Allocatable :: Q_real
+    Type( complex_distributed_matrix ), Allocatable :: Q_complex
     
     Allocate( k_wave_function  :: Q%k_point )
 
-    Associate( kA => A%k_point, kQ => Q%k_point, &
-         kAm => A%k_point%matrix, kQm => Q%k_point%matrix )
+    Q%k_point%this_spin    = A%k_point%this_spin
+    Q%k_point%this_k_point = A%k_point%this_k_point
 
-      Select Type( kQ ) !! hack!!!!
+    Associate( Akm => A%k_point%matrix )
+    
+      Select Type( Akm )
 
       Class Default
-         Stop "Illegal type  in distributed_k_matrix_diag"
+         Stop "Illegal type in distributed_k_matrix_diag"
 
-      Class is ( k_wave_function  )
+      Class is ( real_distributed_matrix )
+         Call Akm%diag( Q_real, evals )
+         Allocate( Q%k_point%matrix, Source = Q_real )
 
-         Select Type( kAm )
+      Class is ( complex_distributed_matrix )
+         Call Akm%diag( Q_complex, evals )
+         Allocate( Q%k_point%matrix, Source = Q_complex )
 
-         Class Default
-            Stop "Illegal type  in distributed_k_matrix_diag"
+      End Select
 
-         Class is ( real_distributed_matrix )
+    End Associate
 
-            Select Type( kQm )
-            Class Default
-               Stop "Illegal type  in distributed_k_matrix_diag"
-            Class is ( real_distributed_matrix )
-               Call kAm%diag( Br, evals )
-               Allocate( Q%k_point%matrix, source = Br )
-               kQ%evals  = evals
-            End Select
+    Associate( Qk => Q%k_point )
+      Select Type( Qk )
+      Class is ( k_wave_function )
+         Qk%evals = evals
+      End Select
+    End Associate
+      
+  End Subroutine distributed_k_matrix_diag
+  
+  Function distributed_k_matrix_dagger( A ) Result( tA )
+    
+    Type( distributed_k_matrix ), Allocatable :: tA
 
-         Class is ( complex_distributed_matrix )
-            Select Type( kQm )
-            Class Default
-               Stop "Illegal type  in distributed_k_matrix_diag"
-            Class is ( real_distributed_matrix )
-               Call kAm%diag( Bc, evals )
-               Allocate( Q%k_point%matrix, source = Bc )
-               kQ%evals  = evals
-            End Select
-         End Select
+    Class( distributed_k_matrix ), Intent( In ) :: A
+
+    Type(    real_distributed_matrix ) :: tA_real
+    Type( complex_distributed_matrix ) :: tA_complex
+
+    Allocate( tA )
+    Associate( Ak => A%k_point )
+      Select Type( Ak )
+      Class Default
+         Stop "Illegal type in distributed_k_matrix_diag"
+      Type is ( k_point_matrix )
+         Allocate( k_point_matrix :: tA%k_point )
+      Type is ( k_wave_function )
+         Allocate( k_wave_function :: tA%k_point )
+      End Select
+    End Associate
+    
+    tA%k_point%this_spin    = A%k_point%this_spin
+    tA%k_point%this_k_point = A%k_point%this_k_point
+
+    Associate( Akm => A%k_point%matrix )
+      Select Type( Akm )
+      Class Default
+         Stop "Illegal type in distributed_k_matrix_diag"
+      Type is ( real_distributed_matrix )
+         tA_real = .Dagger. Akm
+         Allocate( tA%k_point%matrix, Source = tA_real )
+      Type is ( complex_distributed_matrix )
+         tA_complex = .Dagger. Akm
+         Allocate( tA%k_point%matrix, Source = tA_complex )
+      End Select
+         
+    End Associate
+
+  End Function distributed_k_matrix_dagger
+    
+  Function distributed_k_matrix_mult( A, B ) Result( C )
+    
+    Type( distributed_k_matrix ), Allocatable :: C
+
+    Class( distributed_k_matrix ), Intent( In ) :: A
+    Type ( distributed_k_matrix ), Intent( In ) :: B
+
+    Type(    real_distributed_matrix ) :: C_real
+    Type( complex_distributed_matrix ) :: C_complex
+
+    Allocate( C )
+    Associate( Ak => A%k_point )
+      Select Type( Ak )
+      Class Default
+         Stop "Illegal type in distributed_k_matrix_diag"
+      Type is ( k_point_matrix )
+         Allocate( k_point_matrix :: C%k_point )
+      Type is ( k_wave_function )
+         Allocate( k_wave_function :: C%k_point )
+      End Select
+    End Associate
+    C%k_point%this_spin    = A%k_point%this_spin
+    C%k_point%this_k_point = A%k_point%this_k_point
+
+    Associate( Akm => A%k_point%matrix )
+    
+      Select Type( Akm )
+
+      Class Default
+         Stop "Illegal type in distributed_k_matrix_diag"
+         
+      Type is ( real_distributed_matrix )
+         
+         Associate( Bkm => B%k_point%matrix )
+           Select Type( Bkm )
+           Class Default
+              Stop "Illegal type in distributed_k_matrix_diag"
+           Type is ( real_distributed_matrix )
+              C_real = Akm * Bkm
+              Allocate( C%k_point%matrix, Source = C_real )
+           End Select
+         End Associate
+
+      Type is ( complex_distributed_matrix )
+         Associate( Bkm => B%k_point%matrix )
+           Select Type( Bkm )
+           Class Default
+              Stop "Illegal type in distributed_k_matrix_diag"
+           Type is ( complex_distributed_matrix )
+              C_complex = Akm * Bkm
+              Allocate( C%k_point%matrix, Source = C_complex )
+           End Select
+         End Associate
+         
+      End Select
+    End Associate
+
+  End Function distributed_k_matrix_mult
+
+  Subroutine set_global_real( A, m, n, p, q, data )
+    
+    Class( distributed_k_matrix )   , Intent( InOut ) :: A
+    Integer                         , Intent( In    ) :: m
+    Integer                         , Intent( In    ) :: n
+    Integer                         , Intent( In    ) :: p
+    Integer                         , Intent( In    ) :: q
+    Real( wp ), Dimension( m:, p: ) , Intent( In    ) :: data
+
+    Associate( Akm => A%k_point%matrix )
+    
+      Select Type( Akm )
+
+      Class Default
+         Stop "Illegal type in distributed_k_matrix_diag"
+         
+      Type is ( real_distributed_matrix )
+         Call Akm%set_by_global( m, n, p, q, data )
+
       End Select
       
     End Associate
-
-  End Subroutine distributed_k_matrix_diag
-  
-  Subroutine distributed_k_matrix_finalize
-
-    Call distributed_matrix_finalise
     
-  End Subroutine distributed_k_matrix_finalize
-  
+  End Subroutine set_global_real
+    
+  Subroutine set_global_complex( A, m, n, p, q, data )
+    
+    Class( distributed_k_matrix )      , Intent( InOut ) :: A
+    Integer                            , Intent( In    ) :: m
+    Integer                            , Intent( In    ) :: n
+    Integer                            , Intent( In    ) :: p
+    Integer                            , Intent( In    ) :: q
+    Complex( wp ), Dimension( m:, p: ) , Intent( In    ) :: data
+
+    Associate( Akm => A%k_point%matrix )
+    
+      Select Type( Akm )
+
+      Class Default
+         Stop "Illegal type in distributed_k_matrix_diag"
+         
+      Type is ( complex_distributed_matrix )
+         Call Akm%set_by_global( m, n, p, q, data )
+
+      End Select
+      
+    End Associate
+    
+  End Subroutine set_global_complex
+    
+  Subroutine set_local_real( A, m, n, p, q, data )
+    
+    Class( distributed_k_matrix )   , Intent( InOut ) :: A
+    Integer                         , Intent( In    ) :: m
+    Integer                         , Intent( In    ) :: n
+    Integer                         , Intent( In    ) :: p
+    Integer                         , Intent( In    ) :: q
+    Real( wp ), Dimension( m:, p: ) , Intent( In    ) :: data
+
+    Associate( Akm => A%k_point%matrix )
+    
+      Select Type( Akm )
+
+      Class Default
+         Stop "Illegal type in distributed_k_matrix_diag"
+         
+      Type is ( real_distributed_matrix )
+         Call Akm%set_by_local( m, n, p, q, data )
+
+      End Select
+      
+    End Associate
+    
+  End Subroutine set_local_real
+    
+  Subroutine set_local_complex( A, m, n, p, q, data )
+    
+    Class( distributed_k_matrix )      , Intent( InOut ) :: A
+    Integer                            , Intent( In    ) :: m
+    Integer                            , Intent( In    ) :: n
+    Integer                            , Intent( In    ) :: p
+    Integer                            , Intent( In    ) :: q
+    Complex( wp ), Dimension( m:, p: ) , Intent( In    ) :: data
+
+    Associate( Akm => A%k_point%matrix )
+    
+      Select Type( Akm )
+
+      Class Default
+         Stop "Illegal type in distributed_k_matrix_diag"
+         
+      Type is ( complex_distributed_matrix )
+         Call Akm%set_by_local( m, n, p, q, data )
+
+      End Select
+      
+    End Associate
+    
+  End Subroutine set_local_complex
+    
+  Subroutine get_global_real( A, m, n, p, q, data )
+    
+    Class( distributed_k_matrix )   , Intent( In    ) :: A
+    Integer                         , Intent( In    ) :: m
+    Integer                         , Intent( In    ) :: n
+    Integer                         , Intent( In    ) :: p
+    Integer                         , Intent( In    ) :: q
+    Real( wp ), Dimension( m:, p: ) , Intent(   Out ) :: data
+
+    Associate( Akm => A%k_point%matrix )
+    
+      Select Type( Akm )
+
+      Class Default
+         Stop "Illegal type in distributed_k_matrix_diag"
+         
+      Type is ( real_distributed_matrix )
+         Call Akm%get_by_global( m, n, p, q, data )
+
+      End Select
+      
+    End Associate
+    
+  End Subroutine get_global_real
+    
+  Subroutine get_global_complex( A, m, n, p, q, data )
+    
+    Class( distributed_k_matrix )      , Intent( In    ) :: A
+    Integer                            , Intent( In    ) :: m
+    Integer                            , Intent( In    ) :: n
+    Integer                            , Intent( In    ) :: p
+    Integer                            , Intent( In    ) :: q
+    Complex( wp ), Dimension( m:, p: ) , Intent(   Out ) :: data
+
+    Associate( Akm => A%k_point%matrix )
+    
+      Select Type( Akm )
+
+      Class Default
+         Stop "Illegal type in distributed_k_matrix_diag"
+         
+      Type is ( complex_distributed_matrix )
+         Call Akm%get_by_global( m, n, p, q, data )
+
+      End Select
+      
+    End Associate
+    
+  End Subroutine get_global_complex
+    
+  Subroutine get_local_real( A, m, n, p, q, data )
+    
+    Class( distributed_k_matrix )   , Intent( In    ) :: A
+    Integer                         , Intent( In    ) :: m
+    Integer                         , Intent( In    ) :: n
+    Integer                         , Intent( In    ) :: p
+    Integer                         , Intent( In    ) :: q
+    Real( wp ), Dimension( m:, p: ) , Intent(   Out ) :: data
+
+    Associate( Akm => A%k_point%matrix )
+    
+      Select Type( Akm )
+
+      Class Default
+         Stop "Illegal type in distributed_k_matrix_diag"
+         
+      Type is ( real_distributed_matrix )
+         Call Akm%get_by_local( m, n, p, q, data )
+
+      End Select
+      
+    End Associate
+    
+  End Subroutine get_local_real
+    
+  Subroutine get_local_complex( A, m, n, p, q, data )
+    
+    Class( distributed_k_matrix )      , Intent( In    ) :: A
+    Integer                            , Intent( In    ) :: m
+    Integer                            , Intent( In    ) :: n
+    Integer                            , Intent( In    ) :: p
+    Integer                            , Intent( In    ) :: q
+    Complex( wp ), Dimension( m:, p: ) , Intent(   Out ) :: data
+
+    Associate( Akm => A%k_point%matrix )
+    
+      Select Type( Akm )
+
+      Class Default
+         Stop "Illegal type in distributed_k_matrix_diag"
+         
+      Type is ( complex_distributed_matrix )
+         Call Akm%get_by_local( m, n, p, q, data )
+
+      End Select
+      
+    End Associate
+    
+  End Subroutine get_local_complex
+    
 End Module distributed_k_module

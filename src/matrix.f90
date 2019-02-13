@@ -335,7 +335,7 @@ Contains
 
     ! Gets the data ( m:n, p:q ) in the global matrix
 
-    Class( real_distributed_matrix ), Intent( InOut ) :: matrix
+    Class( real_distributed_matrix ), Intent( In    ) :: matrix
     Integer                         , Intent( In    ) :: m
     Integer                         , Intent( In    ) :: n
     Integer                         , Intent( In    ) :: p
@@ -369,7 +369,7 @@ Contains
 
     ! Gets the data ( m:n, p:q ) in the local matrix
 
-    Class( real_distributed_matrix ), Intent( InOut ) :: matrix
+    Class( real_distributed_matrix ), Intent( In    ) :: matrix
     Integer                         , Intent( In    ) :: m
     Integer                         , Intent( In    ) :: n
     Integer                         , Intent( In    ) :: p
@@ -384,7 +384,7 @@ Contains
 
     ! Gets the data ( m:n, p:q ) in the global matrix
 
-    Class( complex_distributed_matrix ), Intent( InOut ) :: matrix
+    Class( complex_distributed_matrix ), Intent( In    ) :: matrix
     Integer                            , Intent( In    ) :: m
     Integer                            , Intent( In    ) :: n
     Integer                            , Intent( In    ) :: p
@@ -418,7 +418,7 @@ Contains
 
     ! Gets the data ( m:n, p:q ) in the local matrix
 
-    Class( complex_distributed_matrix ), Intent( InOut ) :: matrix
+    Class( complex_distributed_matrix ), Intent( In    ) :: matrix
     Integer                            , Intent( In    ) :: m
     Integer                            , Intent( In    ) :: n
     Integer                            , Intent( In    ) :: p
