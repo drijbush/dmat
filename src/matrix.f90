@@ -33,6 +33,7 @@ Module distributed_matrix_module
      Generic            :: set_by_local  => dummy
      Generic            :: get_by_global => dummy
      Generic            :: get_by_local  => dummy
+     Generic            :: extract_cols  => dummy
   End type distributed_matrix
 
   Type, Extends( distributed_matrix ), Public :: real_distributed_matrix
@@ -54,6 +55,8 @@ Module distributed_matrix_module
      Generic            :: set_by_local         => set_by_local_r
      Generic            :: get_by_global        => get_by_global_r
      Generic            :: get_by_local         => get_by_local_r
+     Procedure, Private :: extract_cols_r       => matrix_extract_cols_real
+     Generic            :: extract_cols         => extract_cols_r
   End type real_distributed_matrix
 
   Type, Extends( distributed_matrix ), Public :: complex_distributed_matrix
@@ -75,6 +78,8 @@ Module distributed_matrix_module
      Generic            :: set_by_local         => set_by_local_c
      Generic            :: get_by_global        => get_by_global_c
      Generic            :: get_by_local         => get_by_local_c
+     Procedure, Private :: extract_cols_c       => matrix_extract_cols_complex
+     Generic            :: extract_cols         => extract_cols_c
   End type complex_distributed_matrix
 
   Public :: distributed_matrix_init
@@ -205,7 +210,7 @@ Contains
 
       Allocate( glob_to_loc( 1:n ) )
       
-      glob_to_loc = distributed_matrix_NOT_ME
+      glob_to_loc = DISTRIBUTED_MATRIX_NOT_ME
       
       skip =  np * nb
       
@@ -659,6 +664,80 @@ Contains
                                   ( 0.0_wp, 0.0_wp ), C%data, 1, 1, C%matrix_map%get_descriptor() )
 
   End Function matrix_multiply_complex
+
+  Subroutine matrix_extract_cols_real( A, c1, c2, B )
+
+    ! Needs extending!!! Only does first c2 cols currently
+    
+    Class( real_distributed_matrix ), Intent( In    ) :: A
+    Integer                         , Intent( In    ) :: c1 
+    Integer                         , Intent( In    ) :: c2
+    Type ( real_distributed_matrix ), Intent(   Out ) :: B
+
+    Integer :: m
+    Integer :: c
+    Integer :: c1_loc, c2_loc
+
+    Call A%matrix_map%get_data( m = m )
+    Call matrix_create( B, m, c2 - c1 + 1, A )
+
+    If( c1 /= 1 ) Then
+       Stop "General extraction of cols, not implemented"
+    End If
+    c1_loc = 1
+
+    ! Map global c2 to a local index
+    c = c2
+    c2_loc = 0
+    Do While( c > 0 )
+       If( A%global_to_local_cols( c ) /= DISTRIBUTED_MATRIX_NOT_ME ) Then
+          c2_loc = A%global_to_local_cols( c )
+          Exit
+       Else
+          c = c - 1
+       End If
+    End Do
+
+    B%data = A%data( :, c1_loc:c2_loc )
+
+  End Subroutine matrix_extract_cols_real
+
+  Subroutine matrix_extract_cols_complex( A, c1, c2, B )
+
+    ! Needs extending!!! Only does first c2 cols currently
+    
+    Class( complex_distributed_matrix ), Intent( In    ) :: A
+    Integer                            , Intent( In    ) :: c1 
+    Integer                            , Intent( In    ) :: c2
+    Type ( complex_distributed_matrix ), Intent(   Out ) :: B
+
+    Integer :: m
+    Integer :: c
+    Integer :: c1_loc, c2_loc
+
+    Call A%matrix_map%get_data( m = m )
+    Call matrix_create( B, m, c2 - c1 + 1, A )
+    
+    If( c1 /= 1 ) Then
+       Stop "General extraction of cols, not implemented"
+    End If
+    c1_loc = 1
+
+    ! Map global c2 to a local index
+    c = c2
+    c2_loc = 0
+    Do While( c > 0 )
+       If( A%global_to_local_cols( c ) /= DISTRIBUTED_MATRIX_NOT_ME ) Then
+          c2_loc = A%global_to_local_cols( c )
+          Exit
+       Else
+          c = c - 1
+       End If
+    End Do
+
+    B%data = A%data( :, c1_loc:c2_loc )
+
+  End Subroutine matrix_extract_cols_complex
 
   Subroutine dummy( A )
     Class( distributed_matrix ), Intent( In ) :: A

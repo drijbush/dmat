@@ -44,6 +44,7 @@ Program dummy_main
   Call test_diag_k_real()
   Call test_diag_k_complex()
   Call test_diag_k_real_nm()
+  Call test_diag_extract_complex()
   
   Call mpi_finalize( error )
 
@@ -454,9 +455,6 @@ Contains
     Call A%diag( Q, E )
     
     QT = Q
-!!$    QT = QT%dagger()
-!!$    B = QT%multiply( A )
-!!$    C = B%multiply( Q )
     QT = .Dagger. Q
     B = QT * A
     C = B  * Q
@@ -472,7 +470,7 @@ Contains
     Call zheev( 'v', 'l', n, a_global, n, ev, cwork, Size( cwork ), rwork, error )
 
     If( rank == 0 ) Then
-       Open( unit, file = 'complex_eval_diff.dat' )
+       Open( unit, file = 'complex_eval_k_diff.dat' )
        Do i = 1, n
           Write( unit, '( i4, 2( g30.16, 1x ), g24.16 )' ) i, E( i ), ev( i ), E( i ) - ev( i )
        End Do
@@ -536,7 +534,7 @@ Contains
     Call dsyev( 'v', 'l', n, a_global, n, ev, work, Size( work ), error )
 
     If( rank == 0 ) Then
-       Open( unit, file = 'real_eval_k_diff.dat' )
+       Open( unit, file = 'real_eval_k_nm_diff.dat' )
        Do i = 1, n
           Write( unit, '( i4, 2( g30.16, 1x ), g24.16 )' ) i, E( i ), ev( i ), E( i ) - ev( i )
        End Do
@@ -547,5 +545,73 @@ Contains
     End If
   
   End Subroutine test_diag_k_real_nm
+
+  Subroutine test_diag_extract_complex()
+
+    Type( distributed_k_matrix )              :: A
+    Type( distributed_k_matrix )              :: Q
+    Real( wp ), Dimension( : )  , Allocatable :: E
+    
+    Type( distributed_k_matrix ) :: Qe, QeT, B, C
+    Type( distributed_k_matrix ) :: base_k
+
+    Complex( wp ), Dimension( :, : ), Allocatable :: A_global
+    Complex( wp ), Dimension( :, : ), Allocatable :: tmp
+    Complex( wp ), Dimension( :    ), Allocatable :: cwork
+
+    Real( wp ), Dimension( :, : ), Allocatable :: rtmp
+
+    Real( wp ), Dimension( : ), Allocatable :: rwork
+    Real( wp ), Dimension( : ), Allocatable :: ev
+
+    Integer :: m
+    Integer :: unit = 10
+    Integer :: i
+
+    m = Nint( n * 0.75_wp )
+    
+    Allocate( A_global( 1:n, 1:n ) )
+    Allocate( tmp( 1:m, 1:m ) )
+
+    Allocate( rtmp( 1:n, 1:n ) )
+    Call random_number( rtmp )
+    A_global = rtmp
+    Call random_number( rtmp )
+    A_global = A_global + Cmplx( 0.0_wp, rtmp, wp )
+    A_global = A_global + Conjg( Transpose( A_global ) )
+    
+    Call distributed_k_matrix_init( MPI_COMM_WORLD, base_k )
+    
+    Call A%create( .True., 1, [ 0, 0, 0 ], n, n, base_k )
+    Call A%set_by_global( 1, n, 1, n, A_global )
+    Call A%diag( Q, E )
+
+    Call Q%extract_cols( 1, m, Qe )
+    QeT = .Dagger. Qe
+    B = QeT * A
+    C = B  * Qe
+    Call C%get_by_global( 1, m, 1, m, tmp )
+    Do i = 1, m
+       tmp( i, i ) = tmp( i, i ) - E( i )
+    End Do
+    Call distributed_k_matrix_finalise
+
+    Allocate( cwork( 1:64 * n ) )
+    Allocate( rwork( 1:3 * n - 2 ) )
+    Allocate( ev( 1:n ) )
+    Call zheev( 'v', 'l', n, a_global, n, ev, cwork, Size( cwork ), rwork, error )
+
+    If( rank == 0 ) Then
+       Open( unit, file = 'complex_eval_extract_diff.dat' )
+       Do i = 1, m
+          Write( unit, '( i4, 2( g30.16, 1x ), g24.16 )' ) i, E( i ), ev( i ), E( i ) - ev( i )
+       End Do
+       Write( unit, '( a, 1x, g24.16 )' ) 'Max absolute difference: ', Maxval( Abs( E - ev ) )
+       Close( unit )
+       Write( *, '( a, t64, g24.16 )' ) 'Diag  :Complex Case:             :Max absolute eval diffe: ', Maxval( Abs( E - ev ) )
+       Write( *, '( a, t64, g24.16 )' ) 'Diag  :Complex Case:             :Max sim tran trace test: ', Maxval( Abs( tmp ) )
+    End If
+    
+  End Subroutine test_diag_extract_complex
 
 End Program dummy_main

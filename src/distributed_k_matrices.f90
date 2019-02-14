@@ -38,6 +38,7 @@ Module distributed_k_module
      Procedure, Private :: glr                  => get_local_real
      Procedure, Private :: glc                  => get_local_complex
      Generic            :: get_by_local         => glr, glc
+     Procedure          :: extract_cols         => distributed_k_matrix_extract_cols
   End Type distributed_k_matrix
   
   ! a) Set up base matrix which is 1 matrix across all
@@ -439,5 +440,67 @@ Contains
     End Associate
     
   End Subroutine get_local_complex
+
+  Subroutine distributed_k_matrix_extract_cols( A, c1, c2, B )
+    
+    Class( distributed_k_matrix ), Intent( In    ) :: A
+    Integer                      , Intent( In    ) :: c1 
+    Integer                      , Intent( In    ) :: c2
+    Type ( distributed_k_matrix ), Intent(   Out ) :: B
+
+    Type(    real_distributed_matrix ) :: B_real
+    Type( complex_distributed_matrix ) :: B_complex
+    
+    Associate( Ak => A%k_point )
+      Select Type( Ak )
+      Class Default
+         Stop "Illegal type in distributed_k_matrix_extract_cols 1"
+      Type is ( k_point_matrix )
+         Allocate( k_point_matrix :: B%k_point )
+      Type is ( k_wave_function )
+         Allocate( k_wave_function :: B%k_point )
+         Associate( Bk => B%k_point )
+           Select Type( Bk )
+           Type is ( k_wave_function )
+              Bk%evals = Ak%evals( c1:c2 )
+           End Select
+         End Associate
+      End Select
+    End Associate
+    B%k_point%this_spin    = A%k_point%this_spin
+    B%k_point%this_k_point = A%k_point%this_k_point
+
+    Associate( Akm => A%k_point%matrix )
+    
+      Select Type( Akm )
+
+      Class Default
+         Stop "Illegal type in distributed_k_matrix_extract_cols 2"
+         
+      Type is ( real_distributed_matrix )
+         Call Akm%extract_cols( c1, c2, B_real )
+
+      Type is ( complex_distributed_matrix )
+         Call Akm%extract_cols( c1, c2, B_complex )
+
+      End Select
+    End Associate
+         
+    Associate( Akm => A%k_point%matrix )
+      Select Type( Akm )
+
+      Class Default
+         Stop "Illegal type in distributed_k_matrix_extract_cols 3"
+         
+      Type is ( real_distributed_matrix )
+         Allocate( B%k_point%matrix, Source = B_real )
+
+      Type is ( complex_distributed_matrix )
+         Allocate( B%k_point%matrix, Source = B_complex )
+
+      End Select
+    End Associate
+
+  End Subroutine distributed_k_matrix_extract_cols
     
 End Module distributed_k_module
