@@ -24,62 +24,72 @@ Module distributed_matrix_module
    Contains
      Procedure          :: create        => matrix_create
      Procedure          :: get_maps      => matrix_get_maps
-     Procedure, Private :: dummy
-     Procedure, Private :: dummy_f
-     Generic            :: diag          => dummy
-     Generic            :: dagger        => dummy_f
-     Generic            :: multiply      => dummy_f
-     Generic            :: set_by_global => dummy
-     Generic            :: set_by_local  => dummy
-     Generic            :: get_by_global => dummy
-     Generic            :: get_by_local  => dummy
-     Generic            :: extract_cols  => dummy
+!!$     Procedure, Private :: dummy
+!!$     Procedure, Private :: dummy_f
+!!$     Generic            :: diag          => dummy
+!!$     Generic            :: dagger        => dummy_f
+!!$     Generic            :: multiply      => dummy_f
+!!$     Generic            :: set_by_global => dummy
+!!$     Generic            :: set_by_local  => dummy
+!!$     Generic            :: get_by_global => dummy
+!!$     Generic            :: get_by_local  => dummy
+!!$     Generic            :: extract_cols  => dummy
   End type distributed_matrix
 
   Type, Extends( distributed_matrix ), Public :: real_distributed_matrix
      Real( wp ), Dimension( :, : ), Allocatable :: data
    Contains
-     Procedure, Private :: diag_r               => matrix_diag_real
-     Generic            :: diag                 => diag_r
-     Procedure, Private :: dagger_r             => matrix_dagger_real
-     Generic            :: dagger               => dagger_r
-     Generic            :: Operator( .Dagger. ) => dagger_r
-     Procedure, Private :: multiply_r           => matrix_multiply_real
-     Generic            :: multiply             => multiply_r
-     Generic            :: Operator( * )        => multiply_r
-     Procedure, Private :: set_by_global_r      => matrix_set_global_real
-     Procedure, Private :: set_by_local_r       => matrix_set_local_real
-     Procedure, Private :: get_by_global_r      => matrix_get_global_real
-     Procedure, Private :: get_by_local_r       => matrix_get_local_real
-     Generic            :: set_by_global        => set_by_global_r
-     Generic            :: set_by_local         => set_by_local_r
-     Generic            :: get_by_global        => get_by_global_r
-     Generic            :: get_by_local         => get_by_local_r
-     Procedure, Private :: extract_cols_r       => matrix_extract_cols_real
-     Generic            :: extract_cols         => extract_cols_r
+     Procedure, Private   :: diag_r               => matrix_diag_real
+     Generic              :: diag                 => diag_r
+     Procedure, Private   :: dagger_r             => matrix_dagger_real
+     Generic              :: dagger               => dagger_r
+     Generic              :: Operator( .Dagger. ) => dagger_r
+     Procedure, Private   :: multiply_r           => matrix_multiply_real
+     Generic              :: multiply             => multiply_r
+     Generic              :: Operator( * )        => multiply_r
+     Procedure, Pass( A ) :: pre_scale            => matrix_pre_scale_real
+     Procedure            :: post_scale           => matrix_post_scale_real
+     Generic              :: Operator( * )        => pre_scale, post_scale
+     Procedure            :: add                  => matrix_add_real
+     Generic              :: Operator( + )        => add
+     Procedure, Private   :: set_by_global_r      => matrix_set_global_real
+     Procedure, Private   :: set_by_local_r       => matrix_set_local_real
+     Procedure, Private   :: get_by_global_r      => matrix_get_global_real
+     Procedure, Private   :: get_by_local_r       => matrix_get_local_real
+     Generic              :: set_by_global        => set_by_global_r
+     Generic              :: set_by_local         => set_by_local_r
+     Generic              :: get_by_global        => get_by_global_r
+     Generic              :: get_by_local         => get_by_local_r
+     Procedure, Private   :: extract_cols_r       => matrix_extract_cols_real
+     Generic              :: extract_cols         => extract_cols_r
   End type real_distributed_matrix
 
   Type, Extends( distributed_matrix ), Public :: complex_distributed_matrix
      Complex( wp ), Dimension( :, : ), Allocatable :: data
    Contains
-     Procedure, Private :: diag_c               => matrix_diag_complex
-     Generic            :: diag                 => diag_c
-     Procedure, Private :: dagger_c             => matrix_dagger_complex
-     Generic            :: dagger               => dagger_c 
-     Generic            :: Operator( .Dagger. ) => dagger_c
-     Procedure, Private :: multiply_c           => matrix_multiply_complex
-     Generic            :: multiply             => multiply_c
-     Generic            :: Operator( * )        => multiply_c
-     Procedure, Private :: set_by_global_c      => matrix_set_global_complex
-     Procedure, Private :: set_by_local_c       => matrix_set_local_complex
-     Procedure, Private :: get_by_global_c      => matrix_get_global_complex
-     Procedure, Private :: get_by_local_c       => matrix_get_local_complex
-     Generic            :: set_by_global        => set_by_global_c
-     Generic            :: set_by_local         => set_by_local_c
-     Generic            :: get_by_global        => get_by_global_c
-     Generic            :: get_by_local         => get_by_local_c
-     Procedure, Private :: extract_cols_c       => matrix_extract_cols_complex
-     Generic            :: extract_cols         => extract_cols_c
+     Procedure, Private   :: diag_c               => matrix_diag_complex
+     Generic              :: diag                 => diag_c
+     Procedure, Private   :: dagger_c             => matrix_dagger_complex
+     Generic              :: dagger               => dagger_c 
+     Generic              :: Operator( .Dagger. ) => dagger_c
+     Procedure, Private   :: multiply_c           => matrix_multiply_complex
+     Generic              :: multiply             => multiply_c
+     Generic              :: Operator( * )        => multiply_c
+     Procedure, Pass( A ) :: pre_scale            => matrix_pre_scale_complex
+     Procedure            :: post_scale           => matrix_post_scale_complex
+     Generic              :: Operator( * )        => pre_scale, post_scale
+     Procedure            :: add                  => matrix_add_complex
+     Generic              :: Operator( + )        => add
+     Procedure, Private   :: set_by_global_c      => matrix_set_global_complex
+     Procedure, Private   :: set_by_local_c       => matrix_set_local_complex
+     Procedure, Private   :: get_by_global_c      => matrix_get_global_complex
+     Procedure, Private   :: get_by_local_c       => matrix_get_local_complex
+     Generic              :: set_by_global        => set_by_global_c
+     Generic              :: set_by_local         => set_by_local_c
+     Generic              :: get_by_global        => get_by_global_c
+     Generic              :: get_by_local         => get_by_local_c
+     Procedure, Private   :: extract_cols_c       => matrix_extract_cols_complex
+     Generic              :: extract_cols         => extract_cols_c
   End type complex_distributed_matrix
 
   Public :: distributed_matrix_init
@@ -660,7 +670,7 @@ Contains
     Call matrix_create( C, m, n, A )
 
     Call pzgemm( t1, t2, m, n, k, ( 1.0_wp, 0.0_wp ), A%data, 1, 1, A%matrix_map%get_descriptor(), &
-                                                       B%data, 1, 1, B%matrix_map%get_descriptor(), &
+                                                      B%data, 1, 1, B%matrix_map%get_descriptor(), &
                                   ( 0.0_wp, 0.0_wp ), C%data, 1, 1, C%matrix_map%get_descriptor() )
 
   End Function matrix_multiply_complex
@@ -707,7 +717,8 @@ Contains
   Subroutine matrix_extract_cols_complex( A, c1, c2, B )
 
     ! Needs extending!!! Only does first c2 cols currently
-    ! Also need to think about transposes
+    ! Also need to think about transposes - probably easiest once equivalent row functionality
+    ! implemented
     
     Class( complex_distributed_matrix ), Intent( In    ) :: A
     Integer                            , Intent( In    ) :: c1 
@@ -742,19 +753,137 @@ Contains
 
   End Subroutine matrix_extract_cols_complex
 
-  Subroutine dummy( A )
-    Class( distributed_matrix ), Intent( In ) :: A
-    Stop "Should never get here"
-    Write( *, * ) A%daggered
-  End Subroutine dummy
+  Function  matrix_post_scale_real( A, s ) Result( B )
+
+    Class( real_distributed_matrix ), Allocatable :: B
+
+    Class( real_distributed_matrix ), Intent( In ) :: A
+    Real( wp )                      , Intent( In ) :: s
+
+    Allocate( B, Source = A )
+    B%data = s * A%data
+    
+  End Function matrix_post_scale_real
+
+  Function  matrix_pre_scale_real( s, A ) Result( B )
+
+    Class( real_distributed_matrix ), Allocatable :: B
+
+    Real( wp )                      , Intent( In ) :: s
+    Class( real_distributed_matrix ), Intent( In ) :: A
+
+    Allocate( B, Source = A )
+    B%data = s * A%data
+    
+  End Function matrix_pre_scale_real
+
+  Function  matrix_post_scale_complex( A, s ) Result( B )
+
+    Class( complex_distributed_matrix ), Allocatable :: B
+
+    Class( complex_distributed_matrix ), Intent( In ) :: A
+    Complex( wp )                      , Intent( In ) :: s
+
+    Allocate( B, Source = A )
+    B%data = s * A%data
+    
+  End Function matrix_post_scale_complex
+
+  Function  matrix_pre_scale_complex( s, A ) Result( B )
+
+    Class( complex_distributed_matrix ), Allocatable :: B
+
+    Complex( wp )                      , Intent( In ) :: s
+    Class( complex_distributed_matrix ), Intent( In ) :: A
+
+    Allocate( B, Source = A )
+    B%data = s * A%data
+    
+  End Function matrix_pre_scale_complex
+
+  Function matrix_add_real( A, B ) Result( C )
+
+    ! Note in an effort to avoid communication through transposes the addition occurs in
+    ! the form with A NOT transposed, and then the result is indicate as requiring transposition
+    ! or not as required byt this.
+
+    Class( real_distributed_matrix ), Allocatable :: C
+
+    Class( real_distributed_matrix ), Intent( In ) :: A
+    Class( real_distributed_matrix ), Intent( In ) :: B
+
+    Integer :: m, n
+    
+    Character :: tA, tB
+
+    tA = Merge( 'T', 'N', A%daggered )
+    tB = Merge( 'T', 'N', B%daggered )
+    Call A%matrix_map%get_data( m = m, n = n )
+    Allocate( real_distributed_matrix :: C )
+    Call matrix_create( C, m, n, A )
+    C%data = B%data
+    Call pdgeadd( tB, m, n, 1.0_wp, A%data, 1, 1, A%matrix_map%get_descriptor(), &
+                            1.0_wp, C%data, 1, 1, C%matrix_map%get_descriptor() )
   
-  Logical Function dummy_f( A, rubbish )
-    Class( distributed_matrix ), Intent( In ) :: A
-    Integer                    , Intent( In ) :: rubbish
-    Stop "Should never get here"
-    dummy_f = A%daggered
-    Write( *, * ) rubbish
-  End Function dummy_f
+    Select Case( tA )
+    Case Default
+       Stop "How did we get here in matrix_add_real"
+    Case( "N" )
+       C%daggered = .False.
+    Case( "T" )
+       C%daggered = .True.
+    End Select
+              
+  End Function matrix_add_real
+     
+  Function matrix_add_complex( A, B ) Result( C )
+
+    ! Note in an effort to avoid communication through transposes the addition occurs in
+    ! the form with A NOT transposed, and then the result is indicate as requiring transposition
+    ! or not as required byt this.
+
+    Class( complex_distributed_matrix ), Allocatable :: C
+
+    Class( complex_distributed_matrix ), Intent( In ) :: A
+    Class( complex_distributed_matrix ), Intent( In ) :: B
+
+    Integer :: m, n
+    
+    Character :: tA, tB
+
+    tA = Merge( 'T', 'N', A%daggered )
+    tB = Merge( 'T', 'N', B%daggered )
+    Call A%matrix_map%get_data( m = m, n = n )
+    Allocate( complex_distributed_matrix :: C )
+    Call matrix_create( C, m, n, A )
+    C%data = B%data
+    Call pzgeadd( tB, m, n, ( 1.0_wp, 0.0_wp ), A%data, 1, 1, A%matrix_map%get_descriptor(), &
+                            ( 1.0_wp, 0.0_wp ), C%data, 1, 1, C%matrix_map%get_descriptor() )
+  
+    Select Case( tA )
+    Case Default
+       Stop "How did we get here in matrix_add_complex"
+    Case( "N" )
+       C%daggered = .False.
+    Case( "T" )
+       C%daggered = .True.
+    End Select
+              
+  End Function matrix_add_complex
+     
+!!$  Subroutine dummy( A )
+!!$    Class( distributed_matrix ), Intent( In ) :: A
+!!$    Stop "Should never get here"
+!!$    Write( *, * ) A%daggered
+!!$  End Subroutine dummy
+!!$  
+!!$  Logical Function dummy_f( A, rubbish )
+!!$    Class( distributed_matrix ), Intent( In ) :: A
+!!$    Integer                    , Intent( In ) :: rubbish
+!!$    Stop "Should never get here"
+!!$    dummy_f = A%daggered
+!!$    Write( *, * ) rubbish
+!!$  End Function dummy_f
   
 End Module distributed_matrix_module
  

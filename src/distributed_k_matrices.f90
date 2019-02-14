@@ -20,25 +20,30 @@ Module distributed_k_module
   Type, Public :: distributed_k_matrix
      Class( k_point_matrix ), Allocatable :: k_point
    Contains
-     Procedure          :: create               => distributed_k_matrix_create
-     Procedure          :: dagger               => distributed_k_matrix_dagger
-     Generic            :: operator( .Dagger. ) => dagger
-     Procedure          :: diag                 => distributed_k_matrix_diag
-     Procedure          :: multiply             => distributed_k_matrix_mult
-     Generic            :: operator( * )        => multiply
-     Procedure, Private :: sgr                  => set_global_real
-     Procedure, Private :: sgc                  => set_global_complex
-     Generic            :: set_by_global        => sgr, sgc
-     Procedure, Private :: slr                  => set_local_real
-     Procedure, Private :: slc                  => set_local_complex
-     Generic            :: set_by_local         => slr, slc
-     Procedure, Private :: ggr                  => get_global_real
-     Procedure, Private :: ggc                  => get_global_complex
-     Generic            :: get_by_global        => ggr, ggc
-     Procedure, Private :: glr                  => get_local_real
-     Procedure, Private :: glc                  => get_local_complex
-     Generic            :: get_by_local         => glr, glc
-     Procedure          :: extract_cols         => distributed_k_matrix_extract_cols
+     Procedure            :: create               => distributed_k_matrix_create
+     Procedure            :: dagger               => distributed_k_matrix_dagger
+     Generic              :: operator( .Dagger. ) => dagger
+     Procedure            :: diag                 => distributed_k_matrix_diag
+     Procedure            :: multiply             => distributed_k_matrix_mult
+     Generic              :: Operator( * )        => multiply
+     Procedure            :: add                  => distributed_k_matrix_add
+     Generic              :: Operator( + )        => add
+     Procedure, Private   :: sgr                  => set_global_real
+     Procedure, Private   :: sgc                  => set_global_complex
+     Generic              :: set_by_global        => sgr, sgc
+     Procedure, Private   :: slr                  => set_local_real
+     Procedure, Private   :: slc                  => set_local_complex
+     Generic              :: set_by_local         => slr, slc
+     Procedure, Private   :: ggr                  => get_global_real
+     Procedure, Private   :: ggc                  => get_global_complex
+     Generic              :: get_by_global        => ggr, ggc
+     Procedure, Private   :: glr                  => get_local_real
+     Procedure, Private   :: glc                  => get_local_complex
+     Generic              :: get_by_local         => glr, glc
+     Procedure            :: extract_cols         => distributed_k_matrix_extract_cols
+     Procedure            :: post_scale           => distributed_k_matrix_post_scale
+     Procedure, Pass( A ) :: pre_scale            => distributed_k_matrix_pre_scale
+     Generic              :: Operator( * )        => post_scale, pre_scale
   End Type distributed_k_matrix
   
   ! a) Set up base matrix which is 1 matrix across all
@@ -240,6 +245,65 @@ Contains
     End Associate
 
   End Function distributed_k_matrix_mult
+
+  Function distributed_k_matrix_add( A, B ) Result( C )
+    
+    Type( distributed_k_matrix ), Allocatable :: C
+
+    Class( distributed_k_matrix ), Intent( In ) :: A
+    Type ( distributed_k_matrix ), Intent( In ) :: B
+
+    Type(    real_distributed_matrix ) :: C_real
+    Type( complex_distributed_matrix ) :: C_complex
+
+    Allocate( C )
+    Associate( Ak => A%k_point )
+      Select Type( Ak )
+      Class Default
+         Stop "Illegal type in distributed_k_matrix_diag"
+      Type is ( k_point_matrix )
+         Allocate( k_point_matrix :: C%k_point )
+      Type is ( k_wave_function )
+         Allocate( k_wave_function :: C%k_point )
+      End Select
+    End Associate
+    C%k_point%this_spin    = A%k_point%this_spin
+    C%k_point%this_k_point = A%k_point%this_k_point
+
+    Associate( Akm => A%k_point%matrix )
+    
+      Select Type( Akm )
+
+      Class Default
+         Stop "Illegal type in distributed_k_matrix_diag"
+         
+      Type is ( real_distributed_matrix )
+         
+         Associate( Bkm => B%k_point%matrix )
+           Select Type( Bkm )
+           Class Default
+              Stop "Illegal type in distributed_k_matrix_diag"
+           Type is ( real_distributed_matrix )
+              C_real = Akm + Bkm
+              Allocate( C%k_point%matrix, Source = C_real )
+           End Select
+         End Associate
+
+      Type is ( complex_distributed_matrix )
+         Associate( Bkm => B%k_point%matrix )
+           Select Type( Bkm )
+           Class Default
+              Stop "Illegal type in distributed_k_matrix_diag"
+           Type is ( complex_distributed_matrix )
+              C_complex = Akm + Bkm
+              Allocate( C%k_point%matrix, Source = C_complex )
+           End Select
+         End Associate
+         
+      End Select
+    End Associate
+
+  End Function distributed_k_matrix_add
 
   Subroutine set_global_real( A, m, n, p, q, data )
     
@@ -454,7 +518,7 @@ Contains
     Associate( Ak => A%k_point )
       Select Type( Ak )
       Class Default
-         Stop "Illegal type in distributed_k_matrix_extract_cols 1"
+         Stop "Illegal type in distributed_k_matrix_extract_cols"
       Type is ( k_point_matrix )
          Allocate( k_point_matrix :: B%k_point )
       Type is ( k_wave_function )
@@ -475,7 +539,7 @@ Contains
       Select Type( Akm )
 
       Class Default
-         Stop "Illegal type in distributed_k_matrix_extract_cols 2"
+         Stop "Illegal type in distributed_k_matrix_extract_cols"
          
       Type is ( real_distributed_matrix )
          Call Akm%extract_cols( c1, c2, B_real )
@@ -490,4 +554,86 @@ Contains
          
   End Subroutine distributed_k_matrix_extract_cols
     
+  Function distributed_k_matrix_post_scale( A, s ) Result( B )
+    
+    Type( distributed_k_matrix ), Allocatable :: B
+
+    Class( distributed_k_matrix ), Intent( In ) :: A
+    Real ( wp )                  , Intent( In ) :: s
+
+    Type(    real_distributed_matrix ) :: B_real
+    Type( complex_distributed_matrix ) :: B_complex
+
+    Allocate( B )
+    Associate( Ak => A%k_point )
+      Select Type( Ak )
+      Class Default
+         Stop "Illegal type in distributed_k_matrix_post_scale"
+      Type is ( k_point_matrix )
+         Allocate( k_point_matrix :: B%k_point )
+      Type is ( k_wave_function )
+         Allocate( k_wave_function :: B%k_point )
+      End Select
+    End Associate
+    
+    B%k_point%this_spin    = A%k_point%this_spin
+    B%k_point%this_k_point = A%k_point%this_k_point
+
+    Associate( Akm => A%k_point%matrix )
+      Select Type( Akm )
+      Class Default
+         Stop "Illegal type in distributed_k_matrix_post_scale"
+      Type is ( real_distributed_matrix )
+         B_real = s * Akm
+         Allocate( B%k_point%matrix, Source = B_real )
+      Type is ( complex_distributed_matrix )
+         B_complex = Cmplx( s, Kind = wp ) * Akm
+         Allocate( B%k_point%matrix, Source = B_complex )
+      End Select
+         
+    End Associate
+
+  End Function distributed_k_matrix_post_scale
+
+  Function distributed_k_matrix_pre_scale( s, A ) Result( B )
+    
+    Type( distributed_k_matrix ), Allocatable :: B
+
+    Real ( wp )                  , Intent( In ) :: s
+    Class( distributed_k_matrix ), Intent( In ) :: A
+
+    Type(    real_distributed_matrix ) :: B_real
+    Type( complex_distributed_matrix ) :: B_complex
+
+    Allocate( B )
+    Associate( Ak => A%k_point )
+      Select Type( Ak )
+      Class Default
+         Stop "Illegal type in distributed_k_matrix_pre_scale"
+      Type is ( k_point_matrix )
+         Allocate( k_point_matrix :: B%k_point )
+      Type is ( k_wave_function )
+         Allocate( k_wave_function :: B%k_point )
+      End Select
+    End Associate
+    
+    B%k_point%this_spin    = A%k_point%this_spin
+    B%k_point%this_k_point = A%k_point%this_k_point
+
+    Associate( Akm => A%k_point%matrix )
+      Select Type( Akm )
+      Class Default
+         Stop "Illegal type in distributed_k_matrix_pre_scale"
+      Type is ( real_distributed_matrix )
+         B_real = s * Akm
+         Allocate( B%k_point%matrix, Source = B_real )
+      Type is ( complex_distributed_matrix )
+         B_complex = Cmplx( s, Kind = wp ) * Akm
+         Allocate( B%k_point%matrix, Source = B_complex )
+      End Select
+         
+    End Associate
+
+  End Function distributed_k_matrix_pre_scale
+
 End Module distributed_k_module

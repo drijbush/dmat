@@ -584,12 +584,15 @@ Contains
     
     Call A%create( .True., 1, [ 0, 0, 0 ], n, n, base_k )
     Call A%set_by_global( 1, n, 1, n, A_global )
+    A = A + A
     Call A%diag( Q, E )
-
+    A = 0.5_wp * A
+    
     Call Q%extract_cols( 1, m, Qe )
     QeT = .Dagger. Qe
     B = QeT * A
     C = B  * Qe
+    C = C * 2.0_wp
     Call C%get_by_global( 1, m, 1, m, tmp )
     Do i = 1, m
        tmp( i, i ) = tmp( i, i ) - E( i )
@@ -599,6 +602,7 @@ Contains
     Allocate( cwork( 1:64 * n ) )
     Allocate( rwork( 1:3 * n - 2 ) )
     Allocate( ev( 1:n ) )
+    a_global = a_global * 2.0_wp
     Call zheev( 'v', 'l', n, a_global, n, ev, cwork, Size( cwork ), rwork, error )
 
     If( rank == 0 ) Then
