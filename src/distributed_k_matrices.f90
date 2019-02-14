@@ -30,6 +30,7 @@ Module distributed_k_module
      Generic              :: Operator( + )        => add
      Procedure            :: subtract             => distributed_k_matrix_subtract
      Generic              :: Operator( - )        => subtract
+     Procedure            :: Choleski             => distributed_k_matrix_Choleski
      Procedure, Private   :: sgr                  => set_global_real
      Procedure, Private   :: sgc                  => set_global_complex
      Generic              :: set_by_global        => sgr, sgc
@@ -188,6 +189,46 @@ Contains
     End Associate
 
   End Function distributed_k_matrix_dagger
+    
+  Function distributed_k_matrix_Choleski( A ) Result( C )
+    
+    Type( distributed_k_matrix ), Allocatable :: C
+
+    Class( distributed_k_matrix ), Intent( In ) :: A
+
+    Type(    real_distributed_matrix ) :: C_real
+    Type( complex_distributed_matrix ) :: C_complex
+
+    Allocate( C )
+    Associate( Ak => A%k_point )
+      Select Type( Ak )
+      Class Default
+         Stop "Illegal type in distributed_k_matrix_diag"
+      Type is ( k_point_matrix )
+         Allocate( k_point_matrix :: C%k_point )
+      Type is ( k_wave_function )
+         Allocate( k_wave_function :: C%k_point )
+      End Select
+    End Associate
+    
+    C%k_point%this_spin    = A%k_point%this_spin
+    C%k_point%this_k_point = A%k_point%this_k_point
+
+    Associate( Akm => A%k_point%matrix )
+      Select Type( Akm )
+      Class Default
+         Stop "Illegal type in distributed_k_matrix_diag"
+      Type is ( real_distributed_matrix )
+         C_real = Akm%Choleski()
+         Allocate( C%k_point%matrix, Source = C_real )
+      Type is ( complex_distributed_matrix )
+         C_complex = Akm%Choleski()
+         Allocate( C%k_point%matrix, Source = C_complex )
+      End Select
+         
+    End Associate
+
+  End Function distributed_k_matrix_Choleski
     
   Function distributed_k_matrix_mult( A, B ) Result( C )
     

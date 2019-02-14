@@ -54,6 +54,7 @@ Module distributed_matrix_module
      Generic              :: Operator( + )        => add
      Procedure            :: subtract             => matrix_subtract_real
      Generic              :: Operator( - )        => subtract
+     Procedure            :: Choleski             => matrix_choleski_real
      Procedure, Private   :: set_by_global_r      => matrix_set_global_real
      Procedure, Private   :: set_by_local_r       => matrix_set_local_real
      Procedure, Private   :: get_by_global_r      => matrix_get_global_real
@@ -84,6 +85,7 @@ Module distributed_matrix_module
      Generic              :: Operator( + )        => add
      Procedure            :: subtract             => matrix_subtract_complex
      Generic              :: Operator( - )        => subtract
+     Procedure            :: Choleski             => matrix_choleski_complex
      Procedure, Private   :: set_by_global_c      => matrix_set_global_complex
      Procedure, Private   :: set_by_local_c       => matrix_set_local_complex
      Procedure, Private   :: get_by_global_c      => matrix_get_global_complex
@@ -263,6 +265,79 @@ Contains
     tm%daggered = .Not. tm%daggered
     
   End Function matrix_dagger_complex
+
+  Function matrix_choleski_real( A ) Result( C )
+
+    Class( real_distributed_matrix ), Allocatable :: C
+
+    Class( real_distributed_matrix ), Intent( In ) :: A
+
+    Integer :: m
+    Integer :: i_glob, j_glob
+    Integer :: i, j
+    Integer :: error
+    
+    Allocate( C, Source = A )
+
+    ! Transpose don't matter as A must be symmetric. So set it as untransposed
+    ! so I don't get confused
+    C%daggered = .False.
+
+    ! Zero Upper half of C
+    Do j = 1, Size( C%data, Dim = 2 )
+       j_glob = C%local_to_global_cols( j )
+       Do i = 1, Size( C%data, Dim = 1 )
+          i_glob = C%local_to_global_rows( i )
+          If( j_glob > i_glob ) Then
+             C%data( i, j ) = 0.0_wp
+          End If
+       End Do
+    End Do
+
+    Call C%matrix_map%get_data( m = m )
+    Call pdpotrf( 'L', m, C%data, 1, 1, C%matrix_map%get_descriptor(), error )
+    If( error /= 0 ) Then
+       Deallocate( C )
+    End If
+    
+  End Function matrix_choleski_real
+
+  Function matrix_choleski_complex( A ) Result( C )
+
+    Class( complex_distributed_matrix ), Allocatable :: C
+
+    Class( complex_distributed_matrix ), Intent( In ) :: A
+
+    Integer :: m
+    Integer :: i_glob, j_glob
+    Integer :: i, j
+    Integer :: error
+    
+    Allocate( C, Source = A )
+
+    ! Transpose don't matter as A must be symmetric. So set it as untransposed
+    ! so I don't get confused
+    C%daggered = .False.
+
+    ! Zero Upper half of C
+    Do j = 1, Size( C%data, Dim = 2 )
+       j_glob = C%local_to_global_cols( j )
+       Do i = 1, Size( C%data, Dim = 1 )
+          i_glob = C%local_to_global_rows( i )
+          If( j_glob > i_glob ) Then
+             C%data( i, j ) = 0.0_wp
+          End If
+       End Do
+    End Do
+
+    Call C%matrix_map%get_data( m = m )
+    Call pzpotrf( 'L', m, C%data, 1, 1, C%matrix_map%get_descriptor(), error )
+    
+    If( error /= 0 ) Then
+       Deallocate( C )
+    End If
+    
+  End Function matrix_choleski_complex
 
   Subroutine matrix_set_global_real( matrix, m, n, p, q, data )
 

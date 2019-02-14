@@ -45,6 +45,9 @@ Program dummy_main
   Call test_diag_k_complex()
   Call test_diag_k_real_nm()
   Call test_diag_extract_complex()
+
+  Call test_cholsk_real()
+  Call test_cholsk_complex()
   
   Call mpi_finalize( error )
 
@@ -617,5 +620,87 @@ Contains
     End If
     
   End Subroutine test_diag_extract_complex
+
+  Subroutine test_cholsk_real()
+
+    Type( distributed_k_matrix ) :: A
+    Type( distributed_k_matrix ) :: L
+    Type( distributed_k_matrix ) :: base_k
+    
+    Real( wp ), Dimension( :, : ), Allocatable :: A_global
+    Real( wp ), Dimension( :, : ), Allocatable :: tmp
+
+    Integer :: i
+
+    Allocate( A_global( 1:n, 1:n ) )
+    Allocate( tmp( 1:n, 1:n ) )
+
+    Call random_number( A_global )
+    A_global = A_global + Transpose( A_global )
+    ! Make matrix pos def
+    Do i = 1, n
+       A_global( i, i ) = A_global( i, i ) + Real( n, kind = wp )
+    End Do
+    
+    Call distributed_k_matrix_init( MPI_COMM_WORLD, base_k )
+    
+    Call A%create( .False., 1, [ 0, 0, 0 ], n, n, base_k )
+    Call A%set_by_global( 1, n, 1, n, A_global )
+
+    L = A%Choleski()
+    A = A - L * ( .Dagger. L )
+
+    Call A%get_by_global( 1, n, 1, n, tmp )
+    If( rank == 0 ) Then
+       Write( *, '( a, t64, g24.16 )' ) 'Cholsk:Real    Case:             :Max absolute diff      : ', Maxval( Abs( tmp ) )
+    End If
+
+    Call distributed_k_matrix_finalise
+
+  End Subroutine test_cholsk_real
+
+  Subroutine test_cholsk_complex()
+
+    Type( distributed_k_matrix ) :: A
+    Type( distributed_k_matrix ) :: L
+    Type( distributed_k_matrix ) :: base_k
+    
+    Complex( wp ), Dimension( :, : ), Allocatable :: A_global
+    Complex( wp ), Dimension( :, : ), Allocatable :: tmp
+
+    Real( wp ), Dimension( :, : ), Allocatable :: rtmp
+    
+    Integer :: i
+
+    Allocate( A_global( 1:n, 1:n ) )
+    Allocate( tmp( 1:n, 1:n ) )
+    Allocate( rtmp( 1:n, 1:n ) )
+
+    Call random_number( rtmp )
+    A_global = rtmp
+    Call random_number( rtmp )
+    A_global = A_global + Cmplx( 0.0_wp, rtmp, Kind = wp )
+    A_global = A_global + Transpose( Conjg( A_global ) )
+    ! Make matrix pos def and real diag
+    Do i = 1, n
+       A_global( i, i ) = A_global( i, i ) + Cmplx( n, kind = wp )
+    End Do
+    
+    Call distributed_k_matrix_init( MPI_COMM_WORLD, base_k )
+    
+    Call A%create( .True., 1, [ 0, 0, 0 ], n, n, base_k )
+    Call A%set_by_global( 1, n, 1, n, A_global )
+
+    L = A%Choleski()
+    A = A - L * ( .Dagger. L )
+
+    Call A%get_by_global( 1, n, 1, n, tmp )
+    If( rank == 0 ) Then
+       Write( *, '( a, t64, g24.16 )' ) 'Cholsk:Complex Case:             :Max absolute diff      : ', Maxval( Abs( tmp ) )
+    End If
+
+    Call distributed_k_matrix_finalise
+
+  End Subroutine test_cholsk_complex
 
 End Program dummy_main
