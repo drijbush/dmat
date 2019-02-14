@@ -509,8 +509,10 @@ Contains
     Allocate( A_global( 1:n, 1:n ) )
     Allocate( tmp( 1:n, 1:n ) )
 
-!!$    Call random_number( A_global_nm )
-    A_global_nm = 0.1_wp
+    A_global_nm = 0.01_wp
+    Do i = 1, m
+       A_global_nm( i, i ) = 1.0_wp
+    End Do
     A_global = Matmul( A_global_nm, Transpose( A_global_nm ) )
     
     Call distributed_k_matrix_init( MPI_COMM_WORLD, base_k )
