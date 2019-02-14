@@ -52,6 +52,8 @@ Module distributed_matrix_module
      Generic              :: Operator( * )        => pre_scale, post_scale
      Procedure            :: add                  => matrix_add_real
      Generic              :: Operator( + )        => add
+     Procedure            :: subtract             => matrix_subtract_real
+     Generic              :: Operator( - )        => subtract
      Procedure, Private   :: set_by_global_r      => matrix_set_global_real
      Procedure, Private   :: set_by_local_r       => matrix_set_local_real
      Procedure, Private   :: get_by_global_r      => matrix_get_global_real
@@ -80,6 +82,8 @@ Module distributed_matrix_module
      Generic              :: Operator( * )        => pre_scale, post_scale
      Procedure            :: add                  => matrix_add_complex
      Generic              :: Operator( + )        => add
+     Procedure            :: subtract             => matrix_subtract_complex
+     Generic              :: Operator( - )        => subtract
      Procedure, Private   :: set_by_global_c      => matrix_set_global_complex
      Procedure, Private   :: set_by_local_c       => matrix_set_local_complex
      Procedure, Private   :: get_by_global_c      => matrix_get_global_complex
@@ -870,6 +874,76 @@ Contains
     End Select
               
   End Function matrix_add_complex
+     
+  Function matrix_subtract_real( A, B ) Result( C )
+
+    ! Note in an effort to avoid communication through transposes the subtraction occurs in
+    ! the form with A NOT transposed, and then the result is indicate as requiring transposition
+    ! or not as required byt this.
+
+    Class( real_distributed_matrix ), Allocatable :: C
+
+    Class( real_distributed_matrix ), Intent( In ) :: A
+    Class( real_distributed_matrix ), Intent( In ) :: B
+
+    Integer :: m, n
+    
+    Character :: tA, tB
+
+    tA = Merge( 'T', 'N', A%daggered )
+    tB = Merge( 'T', 'N', B%daggered )
+    Call A%matrix_map%get_data( m = m, n = n )
+    Allocate( real_distributed_matrix :: C )
+    Call matrix_create( C, m, n, A )
+    C%data = B%data
+    Call pdgeadd( tB, m, n,   1.0_wp, A%data, 1, 1, A%matrix_map%get_descriptor(), &
+                            - 1.0_wp, C%data, 1, 1, C%matrix_map%get_descriptor() )
+  
+    Select Case( tA )
+    Case Default
+       Stop "How did we get here in matrix_subtract_real"
+    Case( "N" )
+       C%daggered = .False.
+    Case( "T" )
+       C%daggered = .True.
+    End Select
+              
+  End Function matrix_subtract_real
+     
+  Function matrix_subtract_complex( A, B ) Result( C )
+
+    ! Note in an effort to avoid communication through transposes the subtraction occurs in
+    ! the form with A NOT transposed, and then the result is indicate as requiring transposition
+    ! or not as required byt this.
+
+    Class( complex_distributed_matrix ), Allocatable :: C
+
+    Class( complex_distributed_matrix ), Intent( In ) :: A
+    Class( complex_distributed_matrix ), Intent( In ) :: B
+
+    Integer :: m, n
+    
+    Character :: tA, tB
+
+    tA = Merge( 'T', 'N', A%daggered )
+    tB = Merge( 'T', 'N', B%daggered )
+    Call A%matrix_map%get_data( m = m, n = n )
+    Allocate( complex_distributed_matrix :: C )
+    Call matrix_create( C, m, n, A )
+    C%data = B%data
+    Call pzgeadd( tB, m, n, (   1.0_wp, 0.0_wp ), A%data, 1, 1, A%matrix_map%get_descriptor(), &
+                            ( - 1.0_wp, 0.0_wp ), C%data, 1, 1, C%matrix_map%get_descriptor() )
+  
+    Select Case( tA )
+    Case Default
+       Stop "How did we get here in matrix_subtract_complex"
+    Case( "N" )
+       C%daggered = .False.
+    Case( "T" )
+       C%daggered = .True.
+    End Select
+              
+  End Function matrix_subtract_complex
      
 !!$  Subroutine dummy( A )
 !!$    Class( distributed_matrix ), Intent( In ) :: A

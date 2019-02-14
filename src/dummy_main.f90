@@ -586,7 +586,7 @@ Contains
     Call A%set_by_global( 1, n, 1, n, A_global )
     A = A + A
     Call A%diag( Q, E )
-    A = 0.5_wp * A
+    A = A - 0.5_wp * A
     
     Call Q%extract_cols( 1, m, Qe )
     QeT = .Dagger. Qe
