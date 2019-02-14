@@ -479,28 +479,15 @@ Contains
          
       Type is ( real_distributed_matrix )
          Call Akm%extract_cols( c1, c2, B_real )
-
-      Type is ( complex_distributed_matrix )
-         Call Akm%extract_cols( c1, c2, B_complex )
-
-      End Select
-    End Associate
-         
-    Associate( Akm => A%k_point%matrix )
-      Select Type( Akm )
-
-      Class Default
-         Stop "Illegal type in distributed_k_matrix_extract_cols 3"
-         
-      Type is ( real_distributed_matrix )
          Allocate( B%k_point%matrix, Source = B_real )
 
       Type is ( complex_distributed_matrix )
+         Call Akm%extract_cols( c1, c2, B_complex )
          Allocate( B%k_point%matrix, Source = B_complex )
 
       End Select
     End Associate
-
+         
   End Subroutine distributed_k_matrix_extract_cols
     
 End Module distributed_k_module

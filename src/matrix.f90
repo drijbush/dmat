@@ -668,6 +668,8 @@ Contains
   Subroutine matrix_extract_cols_real( A, c1, c2, B )
 
     ! Needs extending!!! Only does first c2 cols currently
+    ! Also need to think about transposes - probably easiest once equivalent row functionality
+    ! implemented
     
     Class( real_distributed_matrix ), Intent( In    ) :: A
     Integer                         , Intent( In    ) :: c1 
@@ -705,6 +707,7 @@ Contains
   Subroutine matrix_extract_cols_complex( A, c1, c2, B )
 
     ! Needs extending!!! Only does first c2 cols currently
+    ! Also need to think about transposes
     
     Class( complex_distributed_matrix ), Intent( In    ) :: A
     Integer                            , Intent( In    ) :: c1 
