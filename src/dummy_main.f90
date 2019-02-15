@@ -48,6 +48,8 @@ Program dummy_main
 
   Call test_cholsk_real()
   Call test_cholsk_complex()
+
+  Call test_diag_extract_real()
   
   Call mpi_finalize( error )
 
@@ -624,7 +626,8 @@ Contains
   Subroutine test_cholsk_real()
 
     Type( distributed_k_matrix ) :: A
-    Type( distributed_k_matrix ) :: L
+    Type( distributed_k_matrix ) :: B
+    Type( distributed_k_matrix ) :: L, L_inv
     Type( distributed_k_matrix ) :: base_k
     
     Real( wp ), Dimension( :, : ), Allocatable :: A_global
@@ -648,11 +651,22 @@ Contains
     Call A%set_by_global( 1, n, 1, n, A_global )
 
     L = A%Choleski()
-    A = A - L * ( .Dagger. L )
+    B = A - L * ( .Dagger. L )
 
-    Call A%get_by_global( 1, n, 1, n, tmp )
+    Call B%get_by_global( 1, n, 1, n, tmp )
     If( rank == 0 ) Then
        Write( *, '( a, t64, g24.16 )' ) 'Cholsk:Real    Case:             :Max absolute diff      : ', Maxval( Abs( tmp ) )
+    End If
+
+    Call B%set_to_identity()
+    L_inv = L%solve( B )
+    B = L * L_inv
+    Call B%get_by_global( 1, n, 1, n, tmp )
+    Do i = 1, n
+       tmp( i, i ) = tmp( i, i ) - 1.0_wp
+    End Do
+    If( rank == 0 ) Then
+       Write( *, '( a, t64, g24.16 )' ) 'Invert:Real    Case:             :Max absolute diff      : ', Maxval( Abs( tmp ) )
     End If
 
     Call distributed_k_matrix_finalise
@@ -662,7 +676,8 @@ Contains
   Subroutine test_cholsk_complex()
 
     Type( distributed_k_matrix ) :: A
-    Type( distributed_k_matrix ) :: L
+    Type( distributed_k_matrix ) :: B
+    Type( distributed_k_matrix ) :: L, L_inv
     Type( distributed_k_matrix ) :: base_k
     
     Complex( wp ), Dimension( :, : ), Allocatable :: A_global
@@ -692,15 +707,97 @@ Contains
     Call A%set_by_global( 1, n, 1, n, A_global )
 
     L = A%Choleski()
-    A = A - L * ( .Dagger. L )
+    B = A - L * ( .Dagger. L )
 
-    Call A%get_by_global( 1, n, 1, n, tmp )
+    Call B%get_by_global( 1, n, 1, n, tmp )
     If( rank == 0 ) Then
        Write( *, '( a, t64, g24.16 )' ) 'Cholsk:Complex Case:             :Max absolute diff      : ', Maxval( Abs( tmp ) )
+    End If
+
+    Call B%set_to_identity()
+    L_inv = L%solve( B )
+    B = L * L_inv
+    Call B%get_by_global( 1, n, 1, n, tmp )
+    Do i = 1, n
+       tmp( i, i ) = tmp( i, i ) - 1.0_wp
+    End Do
+    If( rank == 0 ) Then
+       Write( *, '( a, t64, g24.16 )' ) 'Invert:Complex Case:             :Max absolute diff      : ', Maxval( Abs( tmp ) )
     End If
 
     Call distributed_k_matrix_finalise
 
   End Subroutine test_cholsk_complex
+
+  Subroutine test_diag_extract_real()
+
+    Type( distributed_k_matrix )              :: S
+    Type( distributed_k_matrix )              :: Q
+    Real( wp ), Dimension( : )  , Allocatable :: E
+    
+    Type( distributed_k_matrix ) :: Qe, QeT, B, C
+    Type( distributed_k_matrix ) :: base_k
+
+    Real( wp ), Parameter :: tol = 0.1_wp
+
+    Real( wp ), Dimension( :, : ), Allocatable :: S_global
+    Real( wp ), Dimension( :, : ), Allocatable :: tmp
+    Real( wp ), Dimension( :    ), Allocatable :: cwork
+
+    Real( wp ), Dimension( : ), Allocatable :: ev
+
+    Integer :: start, ne
+    Integer :: unit = 10
+    Integer :: i
+
+    Allocate( S_global( 1:n, 1:n ) )
+    Call Random_number( S_global )
+    S_global = S_global + Transpose( S_global )
+    S_global = S_global / 2.0_wp
+    Do i = 1, n
+       S_global( i, i ) = 1.0_wp
+    End Do
+    S_global = Matmul( Transpose( S_global ), S_global )
+    
+    Call distributed_k_matrix_init( MPI_COMM_WORLD, base_k )
+    
+    Call S%create( .False., 1, [ 0, 0, 0 ], n, n, base_k )
+    Call S%set_by_global( 1, n, 1, n, S_global )
+    Call S%diag( Q, E )
+
+    Do start = 1, n
+       If( E( start ) > tol ) Then
+          Exit
+       End If
+    End Do
+    ne = n - start + 1 
+    
+    Call Q%extract_cols( start, n, Qe )
+    QeT = .Dagger. Qe
+    B = QeT * S
+    C = B  * Qe
+    Allocate( tmp( 1:ne, 1:ne ) )
+    Call C%get_by_global( 1, ne, 1, ne, tmp )
+    Do i = 1, ne
+       tmp( i, i ) = tmp( i, i ) - E( i + start - 1 )
+    End Do
+    Call distributed_k_matrix_finalise
+
+    Allocate( cwork( 1:64 * n ) )
+    Allocate( ev( 1:n ) )
+    Call dsyev( 'v', 'l', n, S_global, n, ev, cwork, Size( cwork ), error )
+
+    If( rank == 0 ) Then
+       Open( unit, file = 'real_eval_extract_diff.dat' )
+       Do i = 1, n
+          Write( unit, '( i4, 2( g30.16, 1x ), g24.16 )' ) i, E( i ), ev( i ), E( i ) - ev( i )
+       End Do
+       Write( unit, '( a, 1x, g24.16 )' ) 'Max absolute difference: ', Maxval( Abs( E - ev ) )
+       Close( unit )
+       Write( *, '( a, t64, g24.16 )' ) 'Diag  :Real    Case:             :Max absolute eval diffe: ', Maxval( Abs( E - ev ) )
+       Write( *, '( a, t64, g24.16 )' ) 'Diag  :Real    Case:             :Max sim tran trace test: ', Maxval( Abs( tmp ) )
+    End If
+    
+  End Subroutine test_diag_extract_real
 
 End Program dummy_main

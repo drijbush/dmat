@@ -55,6 +55,8 @@ Module distributed_matrix_module
      Procedure            :: subtract             => matrix_subtract_real
      Generic              :: Operator( - )        => subtract
      Procedure            :: Choleski             => matrix_choleski_real
+     Procedure            :: Solve                => matrix_solve_real
+     Procedure            :: set_to_identity      => matrix_set_to_identity_real
      Procedure, Private   :: set_by_global_r      => matrix_set_global_real
      Procedure, Private   :: set_by_local_r       => matrix_set_local_real
      Procedure, Private   :: get_by_global_r      => matrix_get_global_real
@@ -86,6 +88,8 @@ Module distributed_matrix_module
      Procedure            :: subtract             => matrix_subtract_complex
      Generic              :: Operator( - )        => subtract
      Procedure            :: Choleski             => matrix_choleski_complex
+     Procedure            :: Solve                => matrix_solve_complex
+     Procedure            :: set_to_identity      => matrix_set_to_identity_complex
      Procedure, Private   :: set_by_global_c      => matrix_set_global_complex
      Procedure, Private   :: set_by_local_c       => matrix_set_local_complex
      Procedure, Private   :: get_by_global_c      => matrix_get_global_complex
@@ -339,6 +343,68 @@ Contains
     
   End Function matrix_choleski_complex
 
+  Function matrix_solve_real( A, B ) Result( C )
+
+    ! Need to think tranposes!!!
+
+    Class( real_distributed_matrix ), Allocatable :: C
+
+    Class( real_distributed_matrix ), Intent( In ) :: A
+    Class( real_distributed_matrix ), Intent( In ) :: B
+
+    Class( real_distributed_matrix ), Allocatable :: R
+
+    Integer, Dimension( : ), Allocatable :: pivots
+
+    Integer :: m, mb, nrhs
+    Integer :: error
+
+    ! Otherwise A, B overwritten by pdgesv, Grrrrrr
+    Allocate( R, Source = A )
+    Allocate( C, Source = B )
+
+    Call R%matrix_map%get_data( m = m, mb = mb )
+    Call C%matrix_map%get_data( n = nrhs )
+    Allocate( pivots( 1:m + mb ) )
+    Call pdgesv( m, nrhs, R%data, 1, 1, R%matrix_map%get_descriptor(), pivots, &
+                          C%data, 1, 1, C%matrix_map%get_descriptor(), error )
+    If( error /= 0 ) Then
+       Deallocate( C )
+    End If
+    
+  End Function matrix_solve_real
+
+  Function matrix_solve_complex( A, B ) Result( C )
+
+    ! Need to think tranposes!!!
+
+    Class( complex_distributed_matrix ), Allocatable :: C
+
+    Class( complex_distributed_matrix ), Intent( In ) :: A
+    Class( complex_distributed_matrix ), Intent( In ) :: B
+
+    Class( complex_distributed_matrix ), Allocatable :: R
+
+    Integer, Dimension( : ), Allocatable :: pivots
+
+    Integer :: m, mb, nrhs
+    Integer :: error
+
+    ! Otherwise A, B overwritten by pdgesv, Grrrrrr
+    Allocate( R, Source = A )
+    Allocate( C, Source = B )
+
+    Call R%matrix_map%get_data( m = m, mb = mb )
+    Call C%matrix_map%get_data( n = nrhs )
+    Allocate( pivots( 1:m + mb ) )
+    Call pzgesv( m, nrhs, R%data, 1, 1, R%matrix_map%get_descriptor(), pivots, &
+                          C%data, 1, 1, C%matrix_map%get_descriptor(), error )
+    If( error /= 0 ) Then
+       Deallocate( C )
+    End If
+    
+  End Function matrix_solve_complex
+
   Subroutine matrix_set_global_real( matrix, m, n, p, q, data )
 
     ! Sets the data ( m:n, p:q ) in the global matrix
@@ -584,6 +650,11 @@ Contains
     Call pdsyevd( 'V', 'U', m, tmp_A, 1, 1, A%matrix_map%get_descriptor(), E, Q%data, 1, 1, Q%matrix_map%get_descriptor(), &
          work, Size( work ), iwork, Size( iwork ), info )
 
+    If( info /= 0 ) Then
+       Deallocate( Q )
+       Deallocate( E )
+    End If
+
   End Subroutine matrix_diag_real
 
   Subroutine matrix_diag_complex( A, Q, E )
@@ -635,6 +706,11 @@ Contains
     ! Do the diag
     Call pzheevd( 'V', 'U', m, tmp_A, 1, 1, A%matrix_map%get_descriptor(), E, Q%data, 1, 1, Q%matrix_map%get_descriptor(), &
             cwork, Size( cwork ), rwork, Size( rwork ), iwork, Size( iwork ), info )
+
+    If( info /= 0 ) Then
+       Deallocate( Q )
+       Deallocate( E )
+    End If
 
   End Subroutine matrix_diag_complex
 
@@ -756,79 +832,51 @@ Contains
 
   Subroutine matrix_extract_cols_real( A, c1, c2, B )
 
-    ! Needs extending!!! Only does first c2 cols currently
-    ! Also need to think about transposes - probably easiest once equivalent row functionality
-    ! implemented
+    ! ALSO NEED TO THINK ABOUT TRANSPOSES
     
     Class( real_distributed_matrix ), Intent( In    ) :: A
     Integer                         , Intent( In    ) :: c1 
     Integer                         , Intent( In    ) :: c2
     Type ( real_distributed_matrix ), Intent(   Out ) :: B
 
-    Integer :: m
-    Integer :: c
-    Integer :: c1_loc, c2_loc
+    Integer :: ma, mb
+    Integer :: na, nb
+    Integer :: a_ctxt
 
-    Call A%matrix_map%get_data( m = m )
-    Call matrix_create( B, m, c2 - c1 + 1, A )
-
-    If( c1 /= 1 ) Then
-       Stop "General extraction of cols, not implemented"
-    End If
-    c1_loc = 1
-
-    ! Map global c2 to a local index
-    c = c2
-    c2_loc = 0
-    Do While( c > 0 )
-       If( A%global_to_local_cols( c ) /= DISTRIBUTED_MATRIX_NOT_ME ) Then
-          c2_loc = A%global_to_local_cols( c )
-          Exit
-       Else
-          c = c - 1
-       End If
-    End Do
-
-    B%data = A%data( :, c1_loc:c2_loc )
+    Call A%matrix_map%get_data( m = ma, n = na, ctxt = a_ctxt )
+    mb = ma
+    nb = c2 - c1 + 1
+    Call matrix_create( B, mb, nb, A )
+    !!!TRANSPOSES!!!! 
+    B%daggered = A%daggered
+    
+    Call pdgemr2d( mb, nb, A%data, 1, c1, A%matrix_map%get_descriptor(), &
+                           B%data, 1,  1, B%matrix_map%get_descriptor(), a_ctxt )
 
   End Subroutine matrix_extract_cols_real
 
   Subroutine matrix_extract_cols_complex( A, c1, c2, B )
 
-    ! Needs extending!!! Only does first c2 cols currently
-    ! Also need to think about transposes - probably easiest once equivalent row functionality
-    ! implemented
+    ! ALSO NEED TO THINK ABOUT TRANSPOSES
     
     Class( complex_distributed_matrix ), Intent( In    ) :: A
     Integer                            , Intent( In    ) :: c1 
     Integer                            , Intent( In    ) :: c2
     Type ( complex_distributed_matrix ), Intent(   Out ) :: B
 
-    Integer :: m
-    Integer :: c
-    Integer :: c1_loc, c2_loc
+    Integer :: ma, mb
+    Integer :: na, nb
+    Integer :: a_ctxt
 
-    Call A%matrix_map%get_data( m = m )
-    Call matrix_create( B, m, c2 - c1 + 1, A )
+    Call A%matrix_map%get_data( m = ma, n = na, ctxt = a_ctxt )
+    mb = ma
+    nb = c2 - c1 + 1
+    Call matrix_create( B, mb, nb, A )
+    !!!TRANSPOSES!!!! 
+    B%daggered = A%daggered
     
-    If( c1 /= 1 ) Then
-       Stop "General extraction of cols, not implemented"
-    End If
-    c1_loc = 1
-
-    ! Map global c2 to a local index
-    c = c2
-    c2_loc = 0
-    Do While( c > 0 )
-       If( A%global_to_local_cols( c ) /= DISTRIBUTED_MATRIX_NOT_ME ) Then
-          c2_loc = A%global_to_local_cols( c )
-          Exit
-       Else
-          c = c - 1
-       End If
-    End Do
-
-    B%data = A%data( :, c1_loc:c2_loc )
+    Call pzgemr2d( mb, nb, A%data, 1, c1, A%matrix_map%get_descriptor(), &
+                           B%data, 1,  1, B%matrix_map%get_descriptor(), a_ctxt )
 
   End Subroutine matrix_extract_cols_complex
 
@@ -1020,6 +1068,50 @@ Contains
               
   End Function matrix_subtract_complex
      
+  Subroutine matrix_set_to_identity_real( A ) 
+
+    Class( real_distributed_matrix ), Intent( InOut ) :: A
+
+    Integer :: m
+    Integer :: i_glob
+    Integer :: i_loc, j_loc
+    
+    A%data = 0.0_wp
+
+    Call A%matrix_map%get_data( m = m )
+    Do i_glob = 1, m
+       i_loc = A%global_to_local_rows( i_glob )
+       j_loc = A%global_to_local_cols( i_glob )
+       If(  i_loc /= distributed_matrix_NOT_ME .And. &
+            j_loc /= distributed_matrix_NOT_ME ) Then
+          A%data( i_loc, j_loc ) = 1.0_wp
+       End If
+    End Do
+
+  End Subroutine matrix_set_to_identity_real
+
+  Subroutine matrix_set_to_identity_complex( A ) 
+
+    Class( complex_distributed_matrix ), Intent( InOut ) :: A
+
+    Integer :: m
+    Integer :: i_glob
+    Integer :: i_loc, j_loc
+    
+    A%data = 0.0_wp
+
+    Call A%matrix_map%get_data( m = m )
+    Do i_glob = 1, m
+       i_loc = A%global_to_local_rows( i_glob )
+       j_loc = A%global_to_local_cols( i_glob )
+       If(  i_loc /= distributed_matrix_NOT_ME .And. &
+            j_loc /= distributed_matrix_NOT_ME ) Then
+          A%data( i_loc, j_loc ) = 1.0_wp
+       End If
+    End Do
+
+  End Subroutine matrix_set_to_identity_complex
+
 !!$  Subroutine dummy( A )
 !!$    Class( distributed_matrix ), Intent( In ) :: A
 !!$    Stop "Should never get here"
