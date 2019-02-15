@@ -26,6 +26,9 @@ Module distributed_k_module
      Procedure            :: diag                 => distributed_k_matrix_diag
      Procedure            :: multiply             => distributed_k_matrix_mult
      Generic              :: Operator( * )        => multiply
+     Procedure            :: post_scale           => distributed_k_matrix_post_scale
+     Procedure, Pass( A ) :: pre_scale            => distributed_k_matrix_pre_scale
+     Generic              :: Operator( * )        => post_scale, pre_scale
      Procedure            :: add                  => distributed_k_matrix_add
      Generic              :: Operator( + )        => add
      Procedure            :: subtract             => distributed_k_matrix_subtract
@@ -46,9 +49,9 @@ Module distributed_k_module
      Procedure, Private   :: glc                  => get_local_complex
      Generic              :: get_by_local         => glr, glc
      Procedure            :: extract_cols         => distributed_k_matrix_extract_cols
-     Procedure            :: post_scale           => distributed_k_matrix_post_scale
-     Procedure, Pass( A ) :: pre_scale            => distributed_k_matrix_pre_scale
-     Generic              :: Operator( * )        => post_scale, pre_scale
+     Procedure            :: global_to_local      => distributed_k_matrix_g_to_l
+     Procedure            :: local_to_global      => distributed_k_matrix_l_to_g
+     Procedure            :: local_size           => distributed_k_matrix_local_size
   End Type distributed_k_matrix
   
   ! a) Set up base matrix which is 1 matrix across all
@@ -813,5 +816,42 @@ Contains
     End Associate
 
   End Subroutine distributed_k_matrix_set_to_identity
+
+  Function distributed_k_matrix_g_to_l( A, what ) Result( gl_indexing )
+
+    Integer, Dimension( : ), Allocatable :: gl_indexing
+
+    Class( distributed_k_matrix ), Intent( In ) :: A
+    Character( Len = * )         , Intent( In ) :: what
+
+    gl_indexing = A%k_point%matrix%global_to_local( what )
+
+  End Function distributed_k_matrix_g_to_l
+
+  Function distributed_k_matrix_l_to_g( A, what ) Result( lg_indexing )
+
+    Integer, Dimension( : ), Allocatable :: lg_indexing
+
+    Class( distributed_k_matrix ), Intent( In ) :: A
+    Character( Len = * )         , Intent( In ) :: what
+
+    lg_indexing = A%k_point%matrix%local_to_global( what )
+
+  End Function distributed_k_matrix_l_to_g
+
+  Function distributed_k_matrix_local_size( A, dim ) Result( n )
+
+    Integer :: n
+
+    Class( distributed_k_matrix ), Intent( In )           :: A
+    Integer                      , Intent( In ), Optional :: dim
+
+    If( .Not. Present( dim ) ) Then
+       n = A%k_point%matrix%local_size( 1 ) * A%k_point%matrix%local_size( 2 )
+    Else
+       n = A%k_point%matrix%local_size( dim )
+    End If
+
+  End Function distributed_k_matrix_local_size
 
 End Module distributed_k_module

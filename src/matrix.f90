@@ -22,8 +22,11 @@ Module distributed_matrix_module
      Integer, Dimension( : ), Allocatable :: local_to_global_cols
      Logical                              :: daggered = .False. 
    Contains
-     Procedure          :: create        => matrix_create
-     Procedure          :: get_maps      => matrix_get_maps
+     Procedure          :: create          => matrix_create
+     Procedure          :: get_maps        => matrix_get_maps
+     Procedure          :: global_to_local => matrix_global_to_local
+     Procedure          :: local_to_global => matrix_local_to_global
+     Procedure          :: local_size      => matrix_local_size
 !!$     Procedure, Private :: dummy
 !!$     Procedure, Private :: dummy_f
 !!$     Generic            :: diag          => dummy
@@ -1112,6 +1115,60 @@ Contains
 
   End Subroutine matrix_set_to_identity_complex
 
+  Function matrix_global_to_local( A, what ) Result( gl_indexing )
+
+    Integer, Dimension( : ), Allocatable :: gl_indexing
+    
+    Class( distributed_matrix ), Intent( In ) :: A
+    Character( Len = * )       , Intent( In ) :: what
+
+    Select Case( what )
+    Case Default
+       Stop "Illegal WHAT in global_to_local"
+    Case( 'R', 'r' )
+       gl_indexing = A%global_to_local_rows
+    Case( 'C', 'c' )
+       gl_indexing = A%global_to_local_cols
+    End Select
+
+  End Function matrix_global_to_local
+  
+  Function matrix_local_to_global( A, what ) Result( lg_indexing )
+
+    Integer, Dimension( : ), Allocatable :: lg_indexing
+    
+    Class( distributed_matrix ), Intent( In ) :: A
+    Character( Len = * )       , Intent( In ) :: what
+
+    Select Case( what )
+    Case Default
+       Stop "Illegal WHAT in local_to_global"
+    Case( 'R', 'r' )
+       lg_indexing = A%local_to_global_rows
+    Case( 'C', 'c' )
+       lg_indexing = A%local_to_global_cols
+    End Select
+
+  End Function matrix_local_to_global
+
+  Function matrix_local_size( A, dim ) Result( n )
+
+    Integer :: n
+
+    Class( distributed_matrix ), Intent( In ) :: A
+    Integer                    , Intent( In ) :: dim
+
+    Select Case( dim )
+    Case Default
+       Stop "Illegal dim in local_size"
+    Case( 1 )
+       Call A%matrix_map%get_data( m = n )
+    Case( 2 )
+       Call A%matrix_map%get_data( n = n )
+    End Select
+       
+  End Function matrix_local_size
+  
 !!$  Subroutine dummy( A )
 !!$    Class( distributed_matrix ), Intent( In ) :: A
 !!$    Stop "Should never get here"
@@ -1122,7 +1179,7 @@ Contains
 !!$    Class( distributed_matrix ), Intent( In ) :: A
 !!$    Integer                    , Intent( In ) :: rubbish
 !!$    Stop "Should never get here"
-!!$    dummy_f = A%daggered
+!!$    dummy_f = A%daggered 
 !!$    Write( *, * ) rubbish
 !!$  End Function dummy_f
   
