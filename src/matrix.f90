@@ -1016,10 +1016,9 @@ Contains
     Integer :: i_glob
     Integer :: i_loc, j_loc
     
-    ! TRANSPOSES!
     Call A%matrix_map%get_data( m = m, n = n )
 
-    If( Size( d ) == n ) Then
+    If( m == n .And. Size( d ) == n ) Then
        Allocate( B, Source = A )
        Do i_glob = 1, n
           i_loc = A%global_to_local_rows( i_glob )
@@ -1047,7 +1046,7 @@ Contains
     ! TRANSPOSES!
     Call A%matrix_map%get_data( m = m, n = n )
 
-    If( Size( d ) == n ) Then
+    If( m == n .And. Size( d ) == n ) Then
        Allocate( B, Source = A )
        Do i_glob = 1, n
           i_loc = A%global_to_local_rows( i_glob )
@@ -1076,7 +1075,7 @@ Contains
     ! TRANSPOSES!
     Call A%matrix_map%get_data( m = m, n = n )
 
-    If( Size( d ) == n ) Then
+    If( m == n .And. Size( d ) == n ) Then
        Allocate( B, Source = A )
        Do i_glob = 1, n
           i_loc = A%global_to_local_rows( i_glob )
@@ -1104,7 +1103,7 @@ Contains
     ! TRANSPOSES!
     Call A%matrix_map%get_data( m = m, n = n )
 
-    If( Size( d ) == n ) Then
+    If( m == n .And. Size( d ) == n ) Then
        Allocate( B, Source = A )
        Do i_glob = 1, n
           i_loc = A%global_to_local_rows( i_glob )
