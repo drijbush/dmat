@@ -593,7 +593,7 @@ Contains
     Call A%diag( Q, E )
     A = A - 0.5_wp * A
     
-    Call Q%extract_cols( 1, m, Qe )
+    Qe = Q%extract( 1, n, 1, m )
     QeT = .Dagger. Qe
     B = QeT * A
     C = B  * Qe
@@ -772,7 +772,7 @@ Contains
     End Do
     ne = n - start + 1 
     
-    Call Q%extract_cols( start, n, Qe )
+    Qe = Q%extract( 1, n, start, n )
     QeT = .Dagger. Qe
     B = QeT * S
     C = B  * Qe

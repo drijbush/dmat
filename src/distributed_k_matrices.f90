@@ -8,8 +8,8 @@ Module distributed_k_module
   Implicit None
 
   Type, Private :: k_point_matrix
-     Integer                   :: this_spin
-     Integer, Dimension( 1:3 ) :: this_k_point
+     Integer                                 , Private :: this_spin
+     Integer, Dimension( 1:3 )               , Private :: this_k_point
      Class( distributed_matrix ), Allocatable, Private :: matrix
   End Type k_point_matrix
 
@@ -18,7 +18,7 @@ Module distributed_k_module
   End Type k_wave_function
 
   Type, Public :: distributed_k_matrix
-     Class( k_point_matrix ), Allocatable :: k_point
+     Class( k_point_matrix ), Allocatable, Private :: k_point
    Contains
      Procedure            :: create               => distributed_k_matrix_create
      Procedure            :: dagger               => distributed_k_matrix_dagger
@@ -49,6 +49,7 @@ Module distributed_k_module
      Procedure, Private   :: glc                  => get_local_complex
      Generic              :: get_by_local         => glr, glc
      Procedure            :: extract_cols         => distributed_k_matrix_extract_cols
+     Procedure            :: extract              => distributed_k_matrix_extract
      Procedure            :: global_to_local      => distributed_k_matrix_g_to_l
      Procedure            :: local_to_global      => distributed_k_matrix_l_to_g
      Procedure            :: local_size           => distributed_k_matrix_local_size
@@ -60,7 +61,7 @@ Module distributed_k_module
   Public :: distributed_k_matrix_init
   Public :: distributed_k_matrix_finalise
   
-!!$  Private
+  Private
 
   Integer, Parameter :: INVALID = -1
 
@@ -719,7 +720,61 @@ Contains
     End Associate
          
   End Subroutine distributed_k_matrix_extract_cols
+
+  Function distributed_k_matrix_extract( A, r1, r2, c1, c2 ) Result( B )
     
+    Type ( distributed_k_matrix ), Allocatable :: B
+
+    Class( distributed_k_matrix ), Intent( In    ) :: A
+    Integer                      , Intent( In    ) :: r1 
+    Integer                      , Intent( In    ) :: r2
+    Integer                      , Intent( In    ) :: c1 
+    Integer                      , Intent( In    ) :: c2
+
+    Type(    real_distributed_matrix ) :: B_real
+    Type( complex_distributed_matrix ) :: B_complex
+
+    Allocate( B )
+    Associate( Ak => A%k_point )
+      Select Type( Ak )
+      Class Default
+         Stop "Illegal type in distributed_k_matrix_extract"
+      Type is ( k_point_matrix )
+         Allocate( k_point_matrix :: B%k_point )
+      Type is ( k_wave_function )
+         Allocate( k_wave_function :: B%k_point )
+         Associate( Bk => B%k_point )
+           Select Type( Bk )
+           Type is ( k_wave_function )
+              Bk%evals = Ak%evals( c1:c2 )
+           End Select
+         End Associate
+      End Select
+    End Associate
+    B%k_point%this_spin    = A%k_point%this_spin
+    B%k_point%this_k_point = A%k_point%this_k_point
+
+    Associate( Akm => A%k_point%matrix )
+    
+      Select Type( Akm )
+
+      Class Default
+         Stop "Illegal type in distributed_k_matrix_extract"
+         
+      Type is ( real_distributed_matrix )
+!!$         Call Akm%extract_cols( c1, c2, B_real )
+         B_real = Akm%extract( r1, r2, c1, c2 )
+         Allocate( B%k_point%matrix, Source = B_real )
+
+      Type is ( complex_distributed_matrix )
+         Call Akm%extract_cols( c1, c2, B_complex )
+         Allocate( B%k_point%matrix, Source = B_complex )
+
+      End Select
+    End Associate
+         
+  End Function distributed_k_matrix_extract
+  
   Function distributed_k_matrix_post_scale( A, s ) Result( B )
     
     Type( distributed_k_matrix ), Allocatable :: B
