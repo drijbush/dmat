@@ -37,14 +37,13 @@ Module distributed_matrix_module
      Procedure, Private   :: dagger_r             => matrix_dagger_real
      Generic              :: dagger               => dagger_r
      Generic              :: Operator( .Dagger. ) => dagger_r
-!!$     Procedure, Private   :: multiply_r           => matrix_multiply_real
-!!$     Generic              :: multiply             => multiply_r
-!!$     Generic              :: Operator( * )        => multiply_r
      Procedure            :: multiply             => matrix_multiply_real
      Procedure, Pass( A ) :: pre_scale            => matrix_pre_scale_real
      Procedure            :: post_scale           => matrix_post_scale_real
+     Procedure, Pass( A ) :: pre_mult_diag        => matrix_pre_mult_diag_real
      Procedure            :: post_mult_diag       => matrix_post_mult_diag_real
-     Generic              :: Operator( * )        => multiply, pre_scale, post_scale, post_mult_diag
+     Generic              :: Operator( * )        => multiply, pre_scale, post_scale
+     Generic              :: Operator( * )        => pre_mult_diag, post_mult_diag
      Procedure            :: add                  => matrix_add_real
      Procedure            :: post_add_diag        => matrix_post_add_diag_real
      Procedure, Pass( A ) :: pre_add_diag         => matrix_pre_add_diag_real
@@ -75,14 +74,13 @@ Module distributed_matrix_module
      Procedure, Private   :: dagger_c             => matrix_dagger_complex
      Generic              :: dagger               => dagger_c 
      Generic              :: Operator( .Dagger. ) => dagger_c
-!!$     Procedure, Private   :: multiply_c           => matrix_multiply_complex
-!!$     Generic              :: multiply             => multiply_c
-!!$     Generic              :: Operator( * )        => multiply_c
      Procedure            :: multiply             => matrix_multiply_complex
      Procedure, Pass( A ) :: pre_scale            => matrix_pre_scale_complex
      Procedure            :: post_scale           => matrix_post_scale_complex
+     Procedure, Pass( A ) :: pre_mult_diag        => matrix_pre_mult_diag_complex
      Procedure            :: post_mult_diag       => matrix_post_mult_diag_complex
-     Generic              :: Operator( * )        => multiply, pre_scale, post_scale, post_mult_diag
+     Generic              :: Operator( * )        => multiply, pre_scale, post_scale
+     Generic              :: Operator( * )        => pre_mult_diag, post_mult_diag
      Procedure            :: add                  => matrix_add_complex
      Procedure            :: post_add_diag        => matrix_post_add_diag_complex
      Procedure, Pass( A ) :: pre_add_diag         => matrix_pre_add_diag_complex
@@ -898,6 +896,70 @@ Contains
     End Select
     
   End Function matrix_post_mult_diag_complex
+
+  Function matrix_pre_mult_diag_real( d, A ) Result( B )
+
+    Class( real_distributed_matrix ), Allocatable :: B
+
+    Real( wp )                      , Dimension( : ), Intent( In ) :: d
+    Class( real_distributed_matrix ),                 Intent( In ) :: A
+
+    Integer :: ma, na
+    Integer :: i_glob
+    Integer :: i_loc
+
+    ! TRANSPOSES!!!
+    
+    Call A%matrix_map%get_data( m = ma, n = na )
+
+    Select Case( A%daggered )
+    Case( .False. )
+       ! Error check
+       If( ma == Size( d ) ) Then
+          Allocate( B, Source = A )
+          ! Check MATHS!!!
+          Do i_loc = 1, Size( B%data, Dim = 1 )
+             i_glob = B%local_to_global_rows( i_loc )
+             B%data( i_loc, : ) = B%data( i_loc, : ) * d( i_glob )
+          End Do
+       End If
+    Case( .True. )
+       Stop "mult diag real not implemented tranposes"
+    End Select
+    
+  End Function matrix_pre_mult_diag_real
+
+  Function matrix_pre_mult_diag_complex( d, A ) Result( B )
+
+    Class( complex_distributed_matrix ), Allocatable :: B
+
+    Complex( wp )                      , Dimension( : ), Intent( In ) :: d
+    Class( complex_distributed_matrix ),                 Intent( In ) :: A
+
+    Integer :: ma, na
+    Integer :: i_glob
+    Integer :: i_loc
+
+    ! TRANSPOSES!!!
+    
+    Call A%matrix_map%get_data( m = ma, n = na )
+
+    Select Case( A%daggered )
+    Case( .False. )
+       ! Error check
+       If( ma == Size( d ) ) Then
+          Allocate( B, Source = A )
+          ! Check MATHS!!!
+          Do i_loc = 1, Size( B%data, Dim = 1 )
+             i_glob = B%local_to_global_rows( i_loc )
+             B%data( i_loc, : ) = B%data( i_loc, : ) * d( i_glob )
+          End Do
+       End If
+    Case( .True. )
+       Stop "mult diag complex not implemented tranposes"
+    End Select
+    
+  End Function matrix_pre_mult_diag_complex
 
   Function matrix_extract_real( A, r1, r2, c1, c2 ) Result( B )
 
