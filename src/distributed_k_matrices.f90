@@ -762,12 +762,11 @@ Contains
          Stop "Illegal type in distributed_k_matrix_extract"
          
       Type is ( real_distributed_matrix )
-!!$         Call Akm%extract_cols( c1, c2, B_real )
          B_real = Akm%extract( r1, r2, c1, c2 )
          Allocate( B%k_point%matrix, Source = B_real )
 
       Type is ( complex_distributed_matrix )
-         Call Akm%extract_cols( c1, c2, B_complex )
+         B_complex = Akm%extract( r1, r2, c1, c2 )
          Allocate( B%k_point%matrix, Source = B_complex )
 
       End Select
