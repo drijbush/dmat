@@ -30,6 +30,7 @@ Module distributed_k_module
      Procedure, Pass( A ) :: pre_scale            => distributed_k_matrix_pre_scale
      Generic              :: Operator( * )        => post_scale, pre_scale
      Procedure            :: add                  => distributed_k_matrix_add
+     Procedure            :: post_add_diag        => distributed_k_matrix_post_add_diag
      Generic              :: Operator( + )        => add
      Procedure            :: subtract             => distributed_k_matrix_subtract
      Generic              :: Operator( - )        => subtract
@@ -763,6 +764,46 @@ Contains
     End Associate
 
   End Function distributed_k_matrix_post_scale
+
+  Function distributed_k_matrix_post_add_diag( A, d ) Result( B )
+    
+    Type( distributed_k_matrix ), Allocatable :: B
+
+    Class( distributed_k_matrix ), Intent( In ) :: A
+    Real ( wp ), Dimension( : )  , Intent( In ) :: d
+
+    Type(    real_distributed_matrix ) :: B_real
+    Type( complex_distributed_matrix ) :: B_complex
+
+    Allocate( B )
+    Associate( Ak => A%k_point )
+      Select Type( Ak )
+      Class Default
+         Stop "Illegal type in distributed_k_matrix_post_scale"
+      Type is ( k_point_matrix )
+         Allocate( k_point_matrix :: B%k_point )
+      Type is ( k_wave_function )
+         Allocate( k_wave_function :: B%k_point )
+      End Select
+    End Associate
+    
+    B%k_point%this_spin    = A%k_point%this_spin
+    B%k_point%this_k_point = A%k_point%this_k_point
+
+    Associate( Akm => A%k_point%matrix )
+      Select Type( Akm )
+      Class Default
+         Stop "Illegal type in distributed_k_matrix_post_scale"
+      Type is ( real_distributed_matrix )
+         B_real = Akm + d
+         Allocate( B%k_point%matrix, Source = B_real )
+      Type is ( complex_distributed_matrix )
+         B_complex = Akm + Cmplx( d, Kind = wp )
+         Allocate( B%k_point%matrix, Source = B_complex )
+      End Select
+    End Associate
+
+  End Function distributed_k_matrix_post_add_diag
 
   Function distributed_k_matrix_pre_scale( s, A ) Result( B )
     

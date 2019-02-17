@@ -44,7 +44,8 @@ Module distributed_matrix_module
      Procedure            :: post_scale           => matrix_post_scale_real
      Generic              :: Operator( * )        => pre_scale, post_scale
      Procedure            :: add                  => matrix_add_real
-     Generic              :: Operator( + )        => add
+     Procedure            :: post_add_diag        => matrix_post_add_diag_real
+     Generic              :: Operator( + )        => add, post_add_diag
      Procedure            :: subtract             => matrix_subtract_real
      Generic              :: Operator( - )        => subtract
      Procedure            :: Choleski             => matrix_choleski_real
@@ -77,7 +78,8 @@ Module distributed_matrix_module
      Procedure            :: post_scale           => matrix_post_scale_complex
      Generic              :: Operator( * )        => pre_scale, post_scale
      Procedure            :: add                  => matrix_add_complex
-     Generic              :: Operator( + )        => add
+     Procedure            :: post_add_diag        => matrix_post_add_diag_complex
+     Generic              :: Operator( + )        => add, post_add_diag
      Procedure            :: subtract             => matrix_subtract_complex
      Generic              :: Operator( - )        => subtract
      Procedure            :: Choleski             => matrix_choleski_complex
@@ -1001,6 +1003,62 @@ Contains
               
   End Function matrix_add_complex
      
+  Function  matrix_post_add_diag_real( A, d ) Result( B )
+
+    Class( real_distributed_matrix ), Allocatable :: B
+
+    Class( real_distributed_matrix ),                 Intent( In ) :: A
+    Real( wp )                      , Dimension( : ), Intent( In ) :: d
+
+    Integer :: m, n
+    Integer :: i_glob
+    Integer :: i_loc, j_loc
+    
+    ! TRANSPOSES!
+    Call A%matrix_map%get_data( m = m, n = n )
+
+    If( Size( d ) == n ) Then
+       Allocate( B, Source = A )
+       Do i_glob = 1, n
+          i_loc = A%global_to_local_rows( i_glob )
+          j_loc = A%global_to_local_cols( i_glob )
+          If(  i_loc /= distributed_matrix_NOT_ME .And. &
+               j_loc /= distributed_matrix_NOT_ME ) Then
+             B%data( i_loc, j_loc ) = A%data( i_loc, j_loc ) + d( i_glob )
+          End If
+       End Do
+    End If
+    
+  End Function matrix_post_add_diag_real
+
+  Function  matrix_post_add_diag_complex( A, d ) Result( B )
+
+    Class( complex_distributed_matrix ), Allocatable :: B
+
+    Class( complex_distributed_matrix ),                 Intent( In ) :: A
+    Complex( wp )                      , Dimension( : ), Intent( In ) :: d
+
+    Integer :: m, n
+    Integer :: i_glob
+    Integer :: i_loc, j_loc
+    
+    ! TRANSPOSES!
+    Call A%matrix_map%get_data( m = m, n = n )
+
+    If( Size( d ) == n ) Then
+       Allocate( B, Source = A )
+       Do i_glob = 1, n
+          i_loc = A%global_to_local_rows( i_glob )
+          j_loc = A%global_to_local_cols( i_glob )
+          If(  i_loc /= distributed_matrix_NOT_ME .And. &
+               j_loc /= distributed_matrix_NOT_ME ) Then
+             B%data( i_loc, j_loc ) = A%data( i_loc, j_loc ) + d( i_glob )
+          End If
+       End Do
+    End If
+    
+  End Function matrix_post_add_diag_complex
+
   Function matrix_subtract_real( A, B ) Result( C )
 
     ! Note in an effort to avoid communication through transposes the subtraction occurs in
