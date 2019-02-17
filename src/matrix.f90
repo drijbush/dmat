@@ -87,7 +87,7 @@ Module distributed_matrix_module
      Generic              :: Operator( + )        => add, post_add_diag, pre_add_diag
      Procedure            :: subtract             => matrix_subtract_complex
      Procedure            :: subtract_diag        => matrix_post_subtract_diag_complex
-     Generic              :: Operator( - )        => subtract
+     Generic              :: Operator( - )        => subtract, subtract_diag
      Procedure            :: Choleski             => matrix_choleski_complex
      Procedure            :: Solve                => matrix_solve_complex
      Procedure            :: set_to_identity      => matrix_set_to_identity_complex
