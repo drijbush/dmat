@@ -821,10 +821,10 @@ Contains
       Type is ( k_wave_function )
          Allocate( k_wave_function :: B%k_point )
          Associate( Bk => B%k_point )
-           Select Type( Bk )
-           Type is ( k_wave_function )
-              Bk%evals = Ak%evals( c1:c2 )
-           End Select
+!!$           Select Type( Bk )
+!!$           Type is ( k_wave_function )
+!!$              Bk%evals = Ak%evals( c1:c2 )
+!!$           End Select
          End Associate
       End Select
     End Associate

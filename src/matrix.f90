@@ -984,7 +984,7 @@ Contains
     Call matrix_create( B, mb, nb, A )
     !!!TRANSPOSES!!!! 
     B%daggered = A%daggered
-    
+
     Call A%matrix_map%get_data( ctxt = a_ctxt )
     Call pdgemr2d( mb, nb, A%data, r1, c1, A%matrix_map%get_descriptor(), &
                            B%data,  1,  1, B%matrix_map%get_descriptor(), a_ctxt )
