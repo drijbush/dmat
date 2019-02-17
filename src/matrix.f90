@@ -37,18 +37,21 @@ Module distributed_matrix_module
      Procedure, Private   :: dagger_r             => matrix_dagger_real
      Generic              :: dagger               => dagger_r
      Generic              :: Operator( .Dagger. ) => dagger_r
-     Procedure, Private   :: multiply_r           => matrix_multiply_real
-     Generic              :: multiply             => multiply_r
-     Generic              :: Operator( * )        => multiply_r
+!!$     Procedure, Private   :: multiply_r           => matrix_multiply_real
+!!$     Generic              :: multiply             => multiply_r
+!!$     Generic              :: Operator( * )        => multiply_r
+     Procedure            :: multiply             => matrix_multiply_real
      Procedure, Pass( A ) :: pre_scale            => matrix_pre_scale_real
      Procedure            :: post_scale           => matrix_post_scale_real
-     Generic              :: Operator( * )        => pre_scale, post_scale
+     Procedure            :: post_mult_diag       => matrix_post_mult_diag_real
+     Generic              :: Operator( * )        => multiply, pre_scale, post_scale, post_mult_diag
      Procedure            :: add                  => matrix_add_real
      Procedure            :: post_add_diag        => matrix_post_add_diag_real
      Procedure, Pass( A ) :: pre_add_diag         => matrix_pre_add_diag_real
      Generic              :: Operator( + )        => add, post_add_diag, pre_add_diag
      Procedure            :: subtract             => matrix_subtract_real
-     Generic              :: Operator( - )        => subtract
+     Procedure            :: subtract_diag        => matrix_post_subtract_diag_real
+     Generic              :: Operator( - )        => subtract, subtract_diag
      Procedure            :: Choleski             => matrix_choleski_real
      Procedure            :: Solve                => matrix_solve_real
      Procedure            :: set_to_identity      => matrix_set_to_identity_real
@@ -72,17 +75,20 @@ Module distributed_matrix_module
      Procedure, Private   :: dagger_c             => matrix_dagger_complex
      Generic              :: dagger               => dagger_c 
      Generic              :: Operator( .Dagger. ) => dagger_c
-     Procedure, Private   :: multiply_c           => matrix_multiply_complex
-     Generic              :: multiply             => multiply_c
-     Generic              :: Operator( * )        => multiply_c
+!!$     Procedure, Private   :: multiply_c           => matrix_multiply_complex
+!!$     Generic              :: multiply             => multiply_c
+!!$     Generic              :: Operator( * )        => multiply_c
+     Procedure            :: multiply             => matrix_multiply_complex
      Procedure, Pass( A ) :: pre_scale            => matrix_pre_scale_complex
      Procedure            :: post_scale           => matrix_post_scale_complex
-     Generic              :: Operator( * )        => pre_scale, post_scale
+     Procedure            :: post_mult_diag       => matrix_post_mult_diag_complex
+     Generic              :: Operator( * )        => multiply, pre_scale, post_scale, post_mult_diag
      Procedure            :: add                  => matrix_add_complex
      Procedure            :: post_add_diag        => matrix_post_add_diag_complex
      Procedure, Pass( A ) :: pre_add_diag         => matrix_pre_add_diag_complex
      Generic              :: Operator( + )        => add, post_add_diag, pre_add_diag
      Procedure            :: subtract             => matrix_subtract_complex
+     Procedure            :: subtract_diag        => matrix_post_subtract_diag_complex
      Generic              :: Operator( - )        => subtract
      Procedure            :: Choleski             => matrix_choleski_complex
      Procedure            :: Solve                => matrix_solve_complex
@@ -625,6 +631,7 @@ Contains
 
     ! Give Q the same mapping as A
     Q = A
+!!$    Allocate( Q, Source = A )
     
     Call A%matrix_map%get_data( m = m, n = n, npcol = npcol )
 
@@ -679,6 +686,7 @@ Contains
 
     ! Give Q the same mapping as A
     Q = A
+!!$    Allocate( Q, Source = A )
     
     Call A%matrix_map%get_data( m = m, n = n, npcol = npcol )
 
@@ -826,6 +834,70 @@ Contains
                                   ( 0.0_wp, 0.0_wp ), C%data, 1, 1, C%matrix_map%get_descriptor() )
 
   End Function matrix_multiply_complex
+
+  Function matrix_post_mult_diag_real( A, d ) Result( B )
+
+    Class( real_distributed_matrix ), Allocatable :: B
+
+    Class( real_distributed_matrix ),                 Intent( In ) :: A
+    Real( wp )                      , Dimension( : ), Intent( In ) :: d
+
+    Integer :: ma, na
+    Integer :: j_glob
+    Integer :: j_loc
+
+    ! TRANSPOSES!!!
+    
+    Call A%matrix_map%get_data( m = ma, n = na )
+
+    Select Case( A%daggered )
+    Case( .False. )
+       ! Error check
+       If( na == Size( d ) ) Then
+          Allocate( B, Source = A )
+          ! Check MATHS!!!
+          Do j_loc = 1, Size( B%data, Dim = 2 )
+             j_glob = B%local_to_global_cols( j_loc )
+             B%data( :, j_loc ) = B%data( :, j_loc ) * d( j_glob )
+          End Do
+       End If
+    Case( .True. )
+       Stop "mult diag real not implemented tranposes"
+    End Select
+    
+  End Function matrix_post_mult_diag_real
+
+  Function matrix_post_mult_diag_complex( A, d ) Result( B )
+
+    Class( complex_distributed_matrix ), Allocatable :: B
+
+    Class( complex_distributed_matrix ),                 Intent( In ) :: A
+    Complex( wp )                      , Dimension( : ), Intent( In ) :: d
+
+    Integer :: ma, na
+    Integer :: j_glob
+    Integer :: j_loc
+
+    ! TRANSPOSES!!!
+    
+    Call A%matrix_map%get_data( m = ma, n = na )
+
+    Select Case( A%daggered )
+    Case( .False. )
+       ! Error check
+       If( na == Size( d ) ) Then
+          Allocate( B, Source = A )
+          ! Check MATHS!!!
+          Do j_loc = 1, Size( B%data, Dim = 2 )
+             j_glob = B%local_to_global_cols( j_loc )
+             B%data( :, j_loc ) = B%data( :, j_loc ) * d( j_glob )
+          End Do
+       End If
+    Case( .True. )
+       Stop "mult diag complex not implemented tranposes"
+    End Select
+    
+  End Function matrix_post_mult_diag_complex
 
   Function matrix_extract_real( A, r1, r2, c1, c2 ) Result( B )
 
@@ -1043,7 +1115,6 @@ Contains
     Integer :: i_glob
     Integer :: i_loc, j_loc
     
-    ! TRANSPOSES!
     Call A%matrix_map%get_data( m = m, n = n )
 
     If( m == n .And. Size( d ) == n ) Then
@@ -1072,7 +1143,6 @@ Contains
     Integer :: i_glob
     Integer :: i_loc, j_loc
     
-    ! TRANSPOSES!
     Call A%matrix_map%get_data( m = m, n = n )
 
     If( m == n .And. Size( d ) == n ) Then
@@ -1100,7 +1170,6 @@ Contains
     Integer :: i_glob
     Integer :: i_loc, j_loc
     
-    ! TRANSPOSES!
     Call A%matrix_map%get_data( m = m, n = n )
 
     If( m == n .And. Size( d ) == n ) Then
@@ -1187,6 +1256,60 @@ Contains
               
   End Function matrix_subtract_complex
      
+  Function matrix_post_subtract_diag_real( A, d ) Result( B )
+
+    Class( real_distributed_matrix ), Allocatable :: B
+
+    Class( real_distributed_matrix ),                 Intent( In ) :: A
+    Real( wp )                      , Dimension( : ), Intent( In ) :: d
+
+    Integer :: m, n
+    Integer :: i_glob
+    Integer :: i_loc, j_loc
+    
+    Call A%matrix_map%get_data( m = m, n = n )
+
+    If( m == n .And. Size( d ) == n ) Then
+       Allocate( B, Source = A )
+       Do i_glob = 1, n
+          i_loc = A%global_to_local_rows( i_glob )
+          j_loc = A%global_to_local_cols( i_glob )
+          If(  i_loc /= distributed_matrix_NOT_ME .And. &
+               j_loc /= distributed_matrix_NOT_ME ) Then
+             B%data( i_loc, j_loc ) = A%data( i_loc, j_loc ) + d( i_glob )
+          End If
+       End Do
+    End If
+    
+  End Function matrix_post_subtract_diag_real
+
+  Function  matrix_post_subtract_diag_complex( A, d ) Result( B )
+
+    Class( complex_distributed_matrix ), Allocatable :: B
+
+    Class( complex_distributed_matrix ),                 Intent( In ) :: A
+    Complex( wp )                      , Dimension( : ), Intent( In ) :: d
+
+    Integer :: m, n
+    Integer :: i_glob
+    Integer :: i_loc, j_loc
+    
+    Call A%matrix_map%get_data( m = m, n = n )
+
+    If( m == n .And. Size( d ) == n ) Then
+       Allocate( B, Source = A )
+       Do i_glob = 1, n
+          i_loc = A%global_to_local_rows( i_glob )
+          j_loc = A%global_to_local_cols( i_glob )
+          If(  i_loc /= distributed_matrix_NOT_ME .And. &
+               j_loc /= distributed_matrix_NOT_ME ) Then
+             B%data( i_loc, j_loc ) = A%data( i_loc, j_loc ) - d( i_glob )
+          End If
+       End Do
+    End If
+    
+  End Function matrix_post_subtract_diag_complex
+
   Subroutine matrix_set_to_identity_real( A ) 
 
     Class( real_distributed_matrix ), Intent( InOut ) :: A
