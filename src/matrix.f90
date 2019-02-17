@@ -27,16 +27,6 @@ Module distributed_matrix_module
      Procedure          :: global_to_local => matrix_global_to_local
      Procedure          :: local_to_global => matrix_local_to_global
      Procedure          :: local_size      => matrix_local_size
-!!$     Procedure, Private :: dummy
-!!$     Procedure, Private :: dummy_f
-!!$     Generic            :: diag          => dummy
-!!$     Generic            :: dagger        => dummy_f
-!!$     Generic            :: multiply      => dummy_f
-!!$     Generic            :: set_by_global => dummy
-!!$     Generic            :: set_by_local  => dummy
-!!$     Generic            :: get_by_global => dummy
-!!$     Generic            :: get_by_local  => dummy
-!!$     Generic            :: extract_cols  => dummy
   End type distributed_matrix
 
   Type, Extends( distributed_matrix ), Public :: real_distributed_matrix
@@ -68,8 +58,6 @@ Module distributed_matrix_module
      Generic              :: set_by_local         => set_by_local_r
      Generic              :: get_by_global        => get_by_global_r
      Generic              :: get_by_local         => get_by_local_r
-     Procedure, Private   :: extract_cols_r       => matrix_extract_cols_real
-     Generic              :: extract_cols         => extract_cols_r
      Procedure, Private   :: extract_r            => matrix_extract_real
      Generic              :: extract              => extract_r
   End type real_distributed_matrix
@@ -103,8 +91,6 @@ Module distributed_matrix_module
      Generic              :: set_by_local         => set_by_local_c
      Generic              :: get_by_global        => get_by_global_c
      Generic              :: get_by_local         => get_by_local_c
-     Procedure, Private   :: extract_cols_c       => matrix_extract_cols_complex
-     Generic              :: extract_cols         => extract_cols_c
      Procedure, Private   :: extract_c            => matrix_extract_complex
      Generic              :: extract              => extract_c
   End type complex_distributed_matrix
@@ -836,56 +822,6 @@ Contains
                                   ( 0.0_wp, 0.0_wp ), C%data, 1, 1, C%matrix_map%get_descriptor() )
 
   End Function matrix_multiply_complex
-
-  Subroutine matrix_extract_cols_real( A, c1, c2, B )
-
-    ! ALSO NEED TO THINK ABOUT TRANSPOSES
-    
-    Class( real_distributed_matrix ), Intent( In    ) :: A
-    Integer                         , Intent( In    ) :: c1 
-    Integer                         , Intent( In    ) :: c2
-    Type ( real_distributed_matrix ), Intent(   Out ) :: B
-
-    Integer :: ma, mb
-    Integer :: na, nb
-    Integer :: a_ctxt
-
-    Call A%matrix_map%get_data( m = ma, n = na, ctxt = a_ctxt )
-    mb = ma
-    nb = c2 - c1 + 1
-    Call matrix_create( B, mb, nb, A )
-    !!!TRANSPOSES!!!! 
-    B%daggered = A%daggered
-    
-    Call pdgemr2d( mb, nb, A%data, 1, c1, A%matrix_map%get_descriptor(), &
-                           B%data, 1,  1, B%matrix_map%get_descriptor(), a_ctxt )
-
-  End Subroutine matrix_extract_cols_real
-
-  Subroutine matrix_extract_cols_complex( A, c1, c2, B )
-
-    ! ALSO NEED TO THINK ABOUT TRANSPOSES
-    
-    Class( complex_distributed_matrix ), Intent( In    ) :: A
-    Integer                            , Intent( In    ) :: c1 
-    Integer                            , Intent( In    ) :: c2
-    Type ( complex_distributed_matrix ), Intent(   Out ) :: B
-
-    Integer :: ma, mb
-    Integer :: na, nb
-    Integer :: a_ctxt
-
-    Call A%matrix_map%get_data( m = ma, n = na, ctxt = a_ctxt )
-    mb = ma
-    nb = c2 - c1 + 1
-    Call matrix_create( B, mb, nb, A )
-    !!!TRANSPOSES!!!! 
-    B%daggered = A%daggered
-    
-    Call pzgemr2d( mb, nb, A%data, 1, c1, A%matrix_map%get_descriptor(), &
-                           B%data, 1,  1, B%matrix_map%get_descriptor(), a_ctxt )
-
-  End Subroutine matrix_extract_cols_complex
 
   Function matrix_extract_real( A, r1, r2, c1, c2 ) Result( B )
 
