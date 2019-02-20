@@ -503,11 +503,13 @@ Contains
     Integer                         , Intent( In    ) :: p
     Integer                         , Intent( In    ) :: q
     Real( wp ), Dimension( m:, p: ) , Intent(   Out ) :: data
+    
+    Real( wp ) :: rdum
 
     Integer :: i_glob, j_glob
     Integer :: i_loc , j_loc
     Integer :: handle
-    Integer :: error
+    Integer :: rsize, error
     
     ! THIS NEEDS OPTIMISATION!!
     data = 0.0_wp
@@ -525,6 +527,8 @@ Contains
     ! Replicate the data
 !!!!HACK TO WORK AROUND BUG IN MVAPICH2
 !!$    Call MPI_Allreduce( MPI_IN_PLACE, data, Size( data ), handle, MPI_SUM, matrix%matrix_map%get_comm(), error )
+    Call mpi_sizeof( rdum, rsize, error )
+    Call mpi_type_match_size( MPI_TYPECLASS_REAL, rsize, handle, error )
     Call MPI_Allreduce( MPI_IN_PLACE, data, Size( data ), MPI_DOUBLE_PRECISION, MPI_SUM, matrix%matrix_map%get_comm(), error )
        
   End Subroutine matrix_get_global_real
@@ -555,9 +559,11 @@ Contains
     Integer                            , Intent( In    ) :: q
     Complex( wp ), Dimension( m:, p: ) , Intent(   Out ) :: data
 
+    Real( wp ) :: cdum
+
     Integer :: i_glob, j_glob
     Integer :: i_loc , j_loc
-    Integer :: handle
+    Integer :: csize, handle
     Integer :: error
     
     ! THIS NEEDS OPTIMISATION!!
@@ -576,6 +582,8 @@ Contains
     ! Replicate the data
 !!!!HACK TO WORK AROUND BUG IN MVAPICH2
 !!$    Call MPI_Allreduce( MPI_IN_PLACE, data, Size( data ), handle, MPI_SUM, matrix%matrix_map%get_comm(), error )
+    Call mpi_sizeof( cdum, csize, error )
+    Call mpi_type_match_size( MPI_TYPECLASS_REAL, csize, handle, error )
     Call MPI_Allreduce( MPI_IN_PLACE, data, Size( data ), MPI_double_complex, MPI_SUM, matrix%matrix_map%get_comm(), error )
        
   End Subroutine matrix_get_global_complex
