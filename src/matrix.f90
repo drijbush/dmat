@@ -126,7 +126,6 @@ Contains
     Call matrix_mapping_init( comm, base_matrix_mapping )
 
     base_matrix%matrix_map = base_matrix_mapping
-
     base_matrix%global_to_local_rows = [ distributed_matrix_INVALID ]
     base_matrix%global_to_local_cols = [ distributed_matrix_INVALID ]
     base_matrix%local_to_global_rows = [ distributed_matrix_INVALID ]
@@ -173,7 +172,7 @@ Contains
 
     Call source_matrix%matrix_map%get_data( ctxt = ctxt )
 
-    Call matrix%matrix_map%set( matrix%matrix_map%proc_mapping, ctxt, m, n, mb, nb, 0, 0, lda )
+    Call matrix%matrix_map%set( source_matrix%matrix_map%proc_mapping, ctxt, m, n, mb, nb, 0, 0, lda )
 
     Call set_local_to_global( matrix%local_to_global_rows, m, mb, myprow, nprow, lda )
     Call set_local_to_global( matrix%local_to_global_cols, n, nb, mypcol, npcol, sda )
@@ -494,6 +493,8 @@ Contains
 
   Subroutine matrix_get_global_real( matrix, m, n, p, q, data )
 
+    Use mpi
+    
     ! Gets the data ( m:n, p:q ) in the global matrix
 
     Class( real_distributed_matrix ), Intent( In    ) :: matrix
@@ -522,7 +523,9 @@ Contains
     ! Generate a portable MPI data type handle from the variable to be communicated
     Call MPI_Type_create_f90_real( Precision( data ), Range( data ), handle, error )
     ! Replicate the data
-    Call MPI_Allreduce( MPI_IN_PLACE, data, Size( data ), handle, MPI_SUM, matrix%matrix_map%get_comm(), error )
+!!!!HACK TO WORK AROUND BUG IN MVAPICH2
+!!$    Call MPI_Allreduce( MPI_IN_PLACE, data, Size( data ), handle, MPI_SUM, matrix%matrix_map%get_comm(), error )
+    Call MPI_Allreduce( MPI_IN_PLACE, data, Size( data ), MPI_DOUBLE_PRECISION, MPI_SUM, matrix%matrix_map%get_comm(), error )
        
   End Subroutine matrix_get_global_real
 
@@ -571,7 +574,9 @@ Contains
     ! Generate a portable MPI data type handle from the variable to be communicated
     Call MPI_Type_create_f90_complex( Precision( data ), Range( data ), handle, error )
     ! Replicate the data
-    Call MPI_Allreduce( MPI_IN_PLACE, data, Size( data ), handle, MPI_SUM, matrix%matrix_map%get_comm(), error )
+!!!!HACK TO WORK AROUND BUG IN MVAPICH2
+!!$    Call MPI_Allreduce( MPI_IN_PLACE, data, Size( data ), handle, MPI_SUM, matrix%matrix_map%get_comm(), error )
+    Call MPI_Allreduce( MPI_IN_PLACE, data, Size( data ), MPI_double_complex, MPI_SUM, matrix%matrix_map%get_comm(), error )
        
   End Subroutine matrix_get_global_complex
 
@@ -718,6 +723,8 @@ Contains
   End Subroutine matrix_diag_complex
 
   Function matrix_multiply_real( A, B ) Result( C )
+
+    Use mpi
 
     Class( real_distributed_matrix ), Allocatable :: C
 

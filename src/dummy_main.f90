@@ -29,18 +29,16 @@ Program dummy_main
   Call mpi_bcast( n , 1, MPI_INTEGER, 0, MPI_COMM_WORLD, error )
   Call mpi_bcast( nb, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, error )
   
-  Call distributed_matrix_set_default_blocking( 3 )
+  Call distributed_matrix_set_default_blocking( nb )
   Call distributed_matrix_init( MPI_COMM_WORLD, base_matrix )
 
   Call test_matmul_real()
-  Call test_matmul_real_ops() ! Internal compiler error in gcc 5.4
+  Call test_matmul_real_ops() 
   Call test_matmul_complex()
 
   Call test_diag_real()
   Call test_diag_complex()
   
-  Call distributed_matrix_finalise
-
   Call test_diag_k_real()
   Call test_diag_k_complex()
   Call test_diag_k_real_nm()
@@ -51,6 +49,7 @@ Program dummy_main
 
   Call test_diag_extract_real()
   
+  Call distributed_matrix_finalise
   Call mpi_finalize( error )
 
 Contains
