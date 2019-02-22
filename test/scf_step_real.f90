@@ -9,8 +9,10 @@ Module init_matrix_module
   End Interface init_sym_matrix
 
   Interface init_pos_def_matrix
-     Procedure init_sym_matrix_real
+     Procedure init_pos_def_matrix_real
   End Interface init_pos_def_matrix
+
+  Real( wp ), Parameter :: tol = 0.01_wp
 
 Contains
 
@@ -28,8 +30,27 @@ Contains
 
   Subroutine init_pos_def_matrix_real( A )
     Real( wp ), Dimension( :, : ), Intent( Out ) :: A
-    Call init_sym_matrix( A )
-    A = Matmul( Transpose( A ), A )
+    Real( wp ), Dimension( :, : ), Allocatable :: Q
+    Real( wp ), Dimension( : ), Allocatable :: w, work
+    Real( wp ), Parameter :: lo = tol / 10.0_wp
+    Real( wp ), Parameter :: hi = 2.0_wp
+    Real( wp )  :: step
+    Integer :: n
+    Integer :: info
+    Integer :: i
+    n = Size( A, dim = 1 )
+    ! Use a diag to generate an orthogonal matrix for a symilarity transform
+    Allocate( Q( 1:n, 1:n ) )
+    Call init_sym_matrix( Q )
+    Allocate( w( 1:n ) )
+    Allocate( work( 1:66*n ) )
+    Call dsyev( 'V', 'U', n, Q, n, w, work, Size( work ), info )
+    step = ( hi - lo ) / n
+    A = 0.0_wp
+    Do i = 1, n
+       A( i, i ) = lo + ( i - 1 ) * step
+    End Do
+    A = Matmul( Transpose( Q ), Matmul( A, Q ) )
   End Subroutine init_pos_def_matrix_real
 
 End Module init_matrix_module
@@ -40,7 +61,7 @@ Program main
   Use mpi
 
   Use numbers_module      , Only : wp
-  Use init_matrix_module  , Only : init_sym_matrix, init_pos_def_matrix
+  Use init_matrix_module  , Only : init_sym_matrix, init_pos_def_matrix, tol
 
   Implicit None
 
@@ -202,8 +223,6 @@ Contains
 
     Integer :: n, nb
     Integer :: start
-
-    Real( wp ), Parameter :: tol = 0.2_wp
 
     n = Size( A_rep, Dim = 1 )
 
