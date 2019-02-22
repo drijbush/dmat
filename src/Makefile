@@ -7,7 +7,9 @@ SRCS =	distributed_k_matrices.f90 dummy_main.f90 k_point_matrix.f90 \
 OBJS =	distributed_k_matrices.o dummy_main.o k_point_matrix.o matrix.o \
 	matrix_mapping.o numbers.o proc_mapping.o scalapack_interfaces.o
 
-LIBS =-lblacs-openmpi -lblacsF77init-openmpi -lscalapack-openmpi -llapack -lblas	
+LIBS =-lblacs-openmpi -lblacsF77init-openmpi -lscalapack-openmpi -llapack -lblas
+
+TESTPROG = test
 
 CC = cc
 CFLAGS = -O
@@ -15,9 +17,19 @@ FC = mpif90
 FFLAGS = -std=f2003 -fcheck=all -O -Wall -Wextra -fbacktrace -g
 F90 = mpif90
 F90FLAGS = -std=f2003 -fcheck=all -O -Wall -Wextra -fbacktrace -g
-LDFLAGS = -fbacktrace -g 
+LDFLAGS = -fbacktrace -g
+
+.PHONY: clean remake all objects
+.SUFFIXES: $(SUFFIXES) .f90
+
+remake: clean all
+
+%.o: %.f90
+	$(F90) $(F90FLAGS) -c $<
 
 all: $(PROG)
+
+objects: $(OBJS)
 
 $(PROG): $(OBJS)
 	$(F90) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
@@ -25,10 +37,7 @@ $(PROG): $(OBJS)
 clean:
 	rm -f $(PROG) $(OBJS) *.mod
 
-.SUFFIXES: $(SUFFIXES) .f90
 
-.f90.o:
-	$(F90) $(F90FLAGS) -c $<
 
 distributed_k_matrices.o: matrix.o numbers.o
 dummy_main.o: distributed_k_matrices.o matrix.o matrix_mapping.o \
@@ -36,5 +45,5 @@ dummy_main.o: distributed_k_matrices.o matrix.o matrix_mapping.o \
 k_point_matrix.o: numbers.o
 matrix.o: matrix_mapping.o numbers.o scalapack_interfaces.o
 matrix_mapping.o: numbers.o proc_mapping.o
-proc_mapping.o: 
+proc_mapping.o:
 scalapack_interfaces.o: numbers.o
