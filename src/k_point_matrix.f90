@@ -11,10 +11,10 @@ Module k_point_matrix_module
 
   Integer, Private, Parameter :: INVALID = -1
 
-  Type k_point_data
+  Type k_point_info
      Integer                              :: spin
-     Integer, Dimension( : ), Allocatable :: indices
-  End type k_point_data
+     Integer, Dimension( : ), Allocatable :: k_indices
+  End type k_point_info
 
   Type, Private :: k_point_matrices
      ! External label - e.g. irrep number
@@ -23,8 +23,9 @@ Module k_point_matrix_module
   End type k_point_matrices
 
   Type, Private :: k_point
-     Integer                 , Dimension( : ), Allocatable :: spin
-     Integer                 , Dimension( : ), Allocatable :: k
+!!$     Integer                 , Dimension( : ), Allocatable :: spin
+!!$     Integer                 , Dimension( : ), Allocatable :: k
+     Type( k_point_info     )                              :: info
      ! This splitting allows irreps
      Type( k_point_matrices ), Dimension( : ), Allocatable :: data
      ! Want to hide eventually
@@ -32,15 +33,21 @@ Module k_point_matrix_module
   End type k_point
 
   Type, Public :: distributed_k_matrices
-     Type( k_point_data ), Dimension( : ), Allocatable :: all_k_point_data
+     Type( k_point_info ), Dimension( : ), Allocatable :: all_k_point_info
      ! this splitting allows multiple k points on this process
      Type( k_point      ), Dimension( : ), Allocatable :: my_k_points
      ! Want to hide eventually
      Integer                                           :: parent_communicator = INVALID
    Contains
      Procedure :: create => matrices_create
+     Procedure :: diag   => matrices_diag
+     Procedure, Private :: get_sk_index
   End type distributed_k_matrices
   
+  Type, Public :: eval_storage
+     Real( wp ), Dimension( : ), Allocatable :: evals
+  End type eval_storage
+
   Private
 
   Public :: k_matrices_init
@@ -85,13 +92,13 @@ Contains
     n_k_points = Size( k_point_type)
 
     ! Set up the all k point data structure
-    Allocate( matrices%all_k_point_data( 1:n_spin * n_k_points ) )
+    Allocate( matrices%all_k_point_info( 1:n_spin * n_k_points ) )
     sk = 0
     Do s = 1, n_spin
        Do k = 1, n_k_points
           sk = sk + 1
-          matrices%all_k_point_data( sk )%spin    = s
-          matrices%all_k_point_data( sk )%indices = k_points( :, k )
+          matrices%all_k_point_info( sk )%spin      = s
+          matrices%all_k_point_info( sk )%k_indices = k_points( :, k )
        End Do
     End Do
 
@@ -101,8 +108,8 @@ Contains
     Do s = 1, n_spin
        Do k = 1, n_k_points
           sk = sk + 1
-          matrices%my_k_points( sk )%spin = s
-          matrices%my_k_points( sk )%k    = k
+          matrices%my_k_points( sk )%info%spin    = s
+          matrices%my_k_points( sk )%info%k_indices = k_points( :, k )
           Allocate( matrices%my_k_points( sk )%data( 1:1 ) )
           matrices%my_k_points( sk )%data( 1 )%label = 1
           Call matrices%my_k_points( sk )%data( 1 )%matrix%create( k_point_type( k ) == K_POINT_COMPLEX, &
@@ -114,5 +121,45 @@ Contains
     matrices%parent_communicator = source%get_comm()
     
   End Subroutine matrices_create
+
+  Subroutine matrices_diag( A, Q, E )
+
+    Class( distributed_k_matrices ),                 Intent( In    ) :: A
+    Type ( distributed_k_matrices ),                 Intent(   Out ) :: Q
+    Type ( eval_storage           ), Dimension( : ), Intent(   Out ) :: E
+
+    Integer :: my_ks, ks
+
+    ! Make Q have the same set up as A
+    Q = A
+
+    Do my_ks = 1, Size( A%my_k_points )
+       ! Probably want to combin ks and make evals a 1D array
+       ks = A%get_sk_index( my_ks )
+       If( ks /= INVALID ) Then
+          Call A%my_k_points( my_ks )%data( 1 )%matrix%diag( Q%my_k_points( my_ks )%data( 1 )%matrix, E( ks )%evals )
+       End If
+    End Do
+
+    ! Replicate evals
+    
+  End Subroutine matrices_diag
+
+  Pure Function get_sk_index( A, my_sk ) Result( sk )
+
+    Integer :: sk
+
+    Class( distributed_k_matrices ), Intent( In ) :: A
+    Integer                        , Intent( In ) :: my_sk
+
+    Do sk = 1, Size( A%all_k_point_info )
+       If( A%all_k_point_info( sk )%spin == A%my_k_points( my_sk )%info%spin ) Then
+          If( All( A%all_k_point_info( sk )%k_indices == A%my_k_points( my_sk )%info%k_indices ) ) Then
+             Exit
+          End If
+       End If
+    End Do
+    
+  End Function get_sk_index
 
 End Module k_point_matrix_module
