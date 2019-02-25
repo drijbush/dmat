@@ -22,14 +22,14 @@ LDFLAGS = -fbacktrace -g
 .PHONY: clean remake all objects
 .SUFFIXES: $(SUFFIXES) .f90
 
-remake: clean all
-
 %.o: %.f90
 	$(F90) $(F90FLAGS) -c $<
 
 all: $(PROG)
 
 objects: $(OBJS)
+
+remake: clean all
 
 $(PROG): $(OBJS)
 	$(F90) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
@@ -41,8 +41,8 @@ clean:
 
 distributed_k_matrices.o: matrix.o numbers.o
 dummy_main.o: distributed_k_matrices.o matrix.o matrix_mapping.o \
-	proc_mapping.o
-k_point_matrix.o: numbers.o
+	proc_mapping.o k_point_matrix.o
+k_point_matrix.o: numbers.o distributed_k_matrices.o
 matrix.o: matrix_mapping.o numbers.o scalapack_interfaces.o
 matrix_mapping.o: numbers.o proc_mapping.o
 proc_mapping.o:
