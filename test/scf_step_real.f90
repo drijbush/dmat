@@ -12,7 +12,7 @@ Module init_matrix_module
      Procedure init_pos_def_matrix_real
   End Interface init_pos_def_matrix
 
-  Real( wp ), Parameter :: tol = 0.01_wp
+  Real( wp ), Parameter :: tol = 0.0001_wp
 
 Contains
 
