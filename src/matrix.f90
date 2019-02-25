@@ -27,6 +27,7 @@ Module distributed_matrix_module
      Procedure          :: global_to_local => matrix_global_to_local
      Procedure          :: local_to_global => matrix_local_to_global
      Procedure          :: local_size      => matrix_local_size
+     Procedure          :: get_comm        => matrix_communicator
   End type distributed_matrix
 
   Type, Extends( distributed_matrix ), Public :: real_distributed_matrix
@@ -1484,6 +1485,16 @@ Contains
     End Select
        
   End Function matrix_local_size
+  
+  Function matrix_communicator( A ) Result( c )
+
+    Integer :: c
+
+    Class( distributed_matrix ), Intent( In ) :: A
+
+    c = A%matrix_map%get_comm()
+    
+  End Function matrix_communicator
   
 !!$  Subroutine dummy( A )
 !!$    Class( distributed_matrix ), Intent( In ) :: A

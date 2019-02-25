@@ -13,6 +13,8 @@ Module distributed_k_module
      Class( distributed_matrix ), Allocatable, Private :: matrix
   End Type k_point_matrix
 
+  ! WHEN TIDYING DELETE THIS - functionality gained less than complexity
+  ! introduced
   Type, Extends( k_point_matrix ), Private :: k_wave_function
      Real( wp ), Dimension( : ), Allocatable, Private :: evals
   End Type k_wave_function
@@ -59,6 +61,7 @@ Module distributed_k_module
      Procedure            :: global_to_local      => distributed_k_matrix_g_to_l
      Procedure            :: local_to_global      => distributed_k_matrix_l_to_g
      Procedure            :: local_size           => distributed_k_matrix_local_size
+     Procedure            :: get_comm             => distributed_k_matrix_get_communicator
   End Type distributed_k_matrix
   
   ! a) Set up base matrix which is 1 matrix across all
@@ -1064,5 +1067,15 @@ Contains
     End If
 
   End Function distributed_k_matrix_local_size
+
+  Function distributed_k_matrix_get_communicator( A ) Result( c )
+
+    Integer :: c
+
+    Class( distributed_k_matrix ), Intent( In ) :: A
+
+    c = A%k_point%matrix%get_comm()
+    
+  End Function distributed_k_matrix_get_communicator
 
 End Module distributed_k_module
