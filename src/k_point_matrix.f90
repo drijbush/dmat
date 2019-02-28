@@ -42,6 +42,9 @@ Module k_point_matrix_module
      Procedure :: diag   => matrices_diag
      Procedure, Private :: get_all_ks_index
      Procedure, Private :: get_my_ks_index
+     Procedure, Private :: set_by_global_r => ks_array_set_global_real
+     Procedure, Private :: set_by_global_c => ks_array_set_global_complex
+     Generic            :: set_by_global   => set_by_global_r, set_by_global_c
   End type ks_array
   
   Type, Public :: eval_storage
@@ -227,5 +230,45 @@ Contains
     End Do
 
   End Function get_my_ks_index
+
+  Subroutine ks_array_set_global_real( A, ks, m, n, p, q, data )
+
+    ! Need to overload for irreps
+
+    Class( ks_array )              , Intent( InOut ) :: A
+    Integer                        , Intent( In    ) :: ks
+    Integer                        , Intent( In    ) :: m
+    Integer                        , Intent( In    ) :: n
+    Integer                        , Intent( In    ) :: p
+    Integer                        , Intent( In    ) :: q
+    Real( wp ), Dimension( m:, p: ), Intent( In    ) :: data
+
+    Integer :: my_ks
+
+    my_ks = A%get_my_ks_index( ks )
+
+    Call A%my_k_points( my_ks )%data( 1 )%matrix%set_by_global( m, n, p, q, data )
+
+  End Subroutine ks_array_set_global_real
+
+  Subroutine ks_array_set_global_complex( A, ks, m, n, p, q, data )
+
+    ! Need to overload for irreps
+
+    Class( ks_array )                 , Intent( InOut ) :: A
+    Integer                           , Intent( In    ) :: ks
+    Integer                           , Intent( In    ) :: m
+    Integer                           , Intent( In    ) :: n
+    Integer                           , Intent( In    ) :: p
+    Integer                           , Intent( In    ) :: q
+    Complex( wp ), Dimension( m:, p: ), Intent( In    ) :: data
+
+    Integer :: my_ks
+
+    my_ks = A%get_my_ks_index( ks )
+
+    Call A%my_k_points( my_ks )%data( 1 )%matrix%set_by_global( m, n, p, q, data )
+
+  End Subroutine ks_array_set_global_complex
 
 End Module k_point_matrix_module
