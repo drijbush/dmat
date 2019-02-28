@@ -7,6 +7,7 @@ Program dummy_main
   Use proc_mapping_module
   Use matrix_mapping_module
   Use distributed_matrix_module
+  Use k_point_matrix_module
   
   Implicit None
   
@@ -50,6 +51,9 @@ Program dummy_main
   Call test_diag_extract_real()
   
   Call distributed_matrix_finalise
+
+  Call test_ks_array_diag
+
   Call mpi_finalize( error )
 
 Contains
@@ -799,4 +803,31 @@ Contains
     
   End Subroutine test_diag_extract_real
 
+  Subroutine test_ks_array_diag()
+
+    Type( ks_array ) :: A
+    
+    Type( distributed_k_matrix ) :: base_k
+
+    Integer, Parameter :: ns = 1
+    Integer, Parameter :: nk = 2
+
+    Integer, Dimension( 1:3, 1:nk ) :: k_points
+    Integer, Dimension(      1:nk ) :: k_types
+
+    Integer :: k
+
+    Call ks_array_init( MPI_COMM_WORLD, base_k )
+
+    Do k = 1, nk
+       k_points( :, k ) = [ k, 0, 0 ]
+       k_types( k ) = K_POINT_REAL
+    End Do
+    Call A%create( ns, k_types, k_points, n, n, base_k )
+    
+    Call ks_array_finalise
+
+  End Subroutine test_ks_array_diag
+
+  
 End Program dummy_main

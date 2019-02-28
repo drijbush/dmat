@@ -63,7 +63,8 @@ Module distributed_k_module
      Procedure            :: local_size           => distributed_k_matrix_local_size
      Procedure            :: get_comm             => distributed_k_matrix_get_communicator
   End Type distributed_k_matrix
-  
+
+  ! Method for k point //ism
   ! a) Set up base matrix which is 1 matrix across all
   ! b) Provide splits
 

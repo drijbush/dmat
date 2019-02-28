@@ -25,7 +25,7 @@ Module k_point_matrix_module
 
   Type, Private :: k_point
      Type( k_point_info     )                              :: info
-     ! This splitting allows irreps
+     ! This splitting allows irreps within this k point
      Type( k_point_matrices ), Dimension( : ), Allocatable :: data
      ! Want to hide eventually
      Integer                                               :: communicator = INVALID
@@ -38,8 +38,8 @@ Module k_point_matrix_module
      ! Want to hide eventually
      Integer                                           :: parent_communicator = INVALID
    Contains
-     Procedure :: create => matrices_create
-     Procedure :: diag   => matrices_diag
+     Procedure :: create => ks_array_create
+     Procedure :: diag   => ks_array_diag
      Procedure, Private :: get_all_ks_index
      Procedure, Private :: get_my_ks_index
      Procedure, Private :: set_by_global_r => ks_array_set_global_real
@@ -53,12 +53,12 @@ Module k_point_matrix_module
 
   Private
 
-  Public :: k_matrices_init
-  Public :: k_matrices_finalise
+  Public :: ks_array_init
+  Public :: ks_array_finalise
   
 Contains
 
-  Subroutine k_matrices_init( comm, base_matrix )
+  Subroutine ks_array_init( comm, base_matrix )
 
     ! Want to think about what kind of thing is returned here ...
     
@@ -67,15 +67,15 @@ Contains
 
     Call  distributed_k_matrix_init( comm, base_matrix ) 
 
-  End Subroutine k_matrices_init
+  End Subroutine ks_array_init
 
-  Subroutine k_matrices_finalise
+  Subroutine ks_array_finalise
 
     Call distributed_k_matrix_finalise
     
-  End Subroutine k_matrices_finalise
+  End Subroutine ks_array_finalise
 
-  Subroutine matrices_create( matrices, n_spin, k_point_type, k_points, m, n, source )
+  Subroutine ks_array_create( matrices, n_spin, k_point_type, k_points, m, n, source )
 
     ! Create a matrix in all k point mode with no irreps //ism
     
@@ -123,9 +123,9 @@ Contains
 
     matrices%parent_communicator = source%get_comm()
     
-  End Subroutine matrices_create
+  End Subroutine ks_array_create
 
-  Subroutine matrices_diag( A, Q, E )
+  Subroutine ks_array_diag( A, Q, E )
 
     Use mpi
 
@@ -190,7 +190,7 @@ Contains
        Call mpi_bcast( E( ks )%evals, nb, handle, ks_root, A%parent_communicator, error )          
     End Do
     
-  End Subroutine matrices_diag
+  End Subroutine ks_array_diag
 
   Pure Function get_all_ks_index( A, my_ks ) Result( ks )
 
