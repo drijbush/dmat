@@ -818,14 +818,16 @@ Contains
     Type( distributed_k_matrix ) :: base_k
 
     Real( wp ), Dimension( :, :, : ), Allocatable :: A_global
+    Real( wp ), Dimension( :    ), Allocatable :: work, ev
 
-    Real( wp ) :: trace
+!!$    Real( wp ) :: trace
     
     Integer, Dimension( 1:3, 1:nk ) :: k_points
     Integer, Dimension(      1:nk ) :: k_types
 
     Integer :: k, s
     Integer :: i
+    Integer :: error
 
     !HHAAACCCKKK while assume ns = 1
     s = 1
@@ -849,14 +851,19 @@ Contains
 
     Call A%diag( Q, E )
 
+    Allocate( work( 1:64 * n ) )
+    Allocate( ev( 1:n ) )
     Do k = 1, nk
-       trace = 0.0_wp
-       Do i = 1, n
-          trace = trace + A_global( i, i, k )
-       End Do
-       If( rank == 0 ) Then
-          Write( *, * ) k, E( k )%evals( 1:Min( 4, n ) ), Sum( E( k )%evals ), trace, Sum( E( k )%evals ) - trace
-       End If
+       Call dsyev( 'v', 'l', n, a_global( :, :, k ), n, ev, work, Size( work ), error )
+       Write( *, '( a, t64, g24.16 )' ) 'Diagk :Real    Case:             :Max absolute eval diff : ', &
+            Maxval( Abs( E( k )%evals - ev ) )
+!!$       trace = 0.0_wp
+!!$       Do i = 1, n
+!!$          trace = trace + A_global( i, i, k )
+!!$       End Do
+!!$       If( rank == 0 ) Then
+!!$          Write( *, * ) k, E( k )%evals( 1:Min( 4, n ) ), Sum( E( k )%evals ), trace, Sum( E( k )%evals ) - trace
+!!$       End If
     End Do
     
     Call ks_array_finalise
