@@ -805,17 +805,36 @@ Contains
 
   Subroutine test_ks_array_diag()
 
+    ! Assume ns=1 for moment
+
+    Integer, Parameter :: ns = 1
+    Integer, Parameter :: nk = 5
+
     Type( ks_array ) :: A
+    Type( ks_array ) :: Q
+    
+    Type( eval_storage ), Dimension( 1:nk ) :: E
     
     Type( distributed_k_matrix ) :: base_k
 
-    Integer, Parameter :: ns = 1
-    Integer, Parameter :: nk = 2
+    Real( wp ), Dimension( :, :, : ), Allocatable :: A_global
 
+    Real( wp ) :: trace
+    
     Integer, Dimension( 1:3, 1:nk ) :: k_points
     Integer, Dimension(      1:nk ) :: k_types
 
-    Integer :: k
+    Integer :: k, s
+    Integer :: i
+
+    !HHAAACCCKKK while assume ns = 1
+    s = 1
+
+    Allocate( A_global( 1:n, 1:n, 1:nk ) )
+    Call Random_number( A_global )
+    Do k = 1, nk
+       A_global( :, :, k ) = A_global( :, :, k ) + Transpose( A_global( :, :, k  ) )
+    End Do
 
     Call ks_array_init( MPI_COMM_WORLD, base_k )
 
@@ -824,6 +843,21 @@ Contains
        k_types( k ) = K_POINT_REAL
     End Do
     Call A%create( ns, k_types, k_points, n, n, base_k )
+    Do k = 1, nk
+       Call A%set_by_global( s, k_points( :, k ), 1, n, 1, n, A_global( :, :, k ) )
+    End Do
+
+    Call A%diag( Q, E )
+
+    Do k = 1, nk
+       trace = 0.0_wp
+       Do i = 1, n
+          trace = trace + A_global( i, i, k )
+       End Do
+       If( rank == 0 ) Then
+          Write( *, * ) k, E( k )%evals( 1:Min( 4, n ) ), Sum( E( k )%evals ), trace, Sum( E( k )%evals ) - trace
+       End If
+    End Do
     
     Call ks_array_finalise
 

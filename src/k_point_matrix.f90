@@ -42,6 +42,7 @@ Module k_point_matrix_module
      Procedure :: diag   => ks_array_diag
      Procedure, Private :: get_all_ks_index
      Procedure, Private :: get_my_ks_index
+     Procedure, Private :: get_ks
      Procedure, Private :: set_by_global_r => ks_array_set_global_real
      Procedure, Private :: set_by_global_c => ks_array_set_global_complex
      Generic            :: set_by_global   => set_by_global_r, set_by_global_c
@@ -231,44 +232,72 @@ Contains
 
   End Function get_my_ks_index
 
-  Subroutine ks_array_set_global_real( A, ks, m, n, p, q, data )
+  Pure Function get_ks( A, k, s ) Result( ks )
+
+    Integer :: ks
+
+    Class( ks_array )        , Intent( In ) :: A
+    Integer, Dimension( 1:3 ), Intent( In ) :: k
+    Integer                  , Intent( In ) :: s
+
+    Do ks = 1, Size( A%all_k_point_info )
+       If( A%all_k_point_info( ks )%spin == s ) Then
+          If( All( A%all_k_point_info( ks )%k_indices == k ) ) Then
+             Exit
+          End If
+       End If
+    End Do
+    
+  End Function get_ks
+
+  Subroutine ks_array_set_global_real( A, s, k, m, n, p, q, data )
 
     ! Need to overload for irreps
 
     Class( ks_array )              , Intent( InOut ) :: A
-    Integer                        , Intent( In    ) :: ks
+    Integer                        , Intent( In    ) :: s
+    Integer    , Dimension( : )    , Intent( In    ) :: k
     Integer                        , Intent( In    ) :: m
     Integer                        , Intent( In    ) :: n
     Integer                        , Intent( In    ) :: p
     Integer                        , Intent( In    ) :: q
     Real( wp ), Dimension( m:, p: ), Intent( In    ) :: data
 
-    Integer :: my_ks
+    Integer :: ks, my_ks
 
+    ks = A%get_ks( k, s )
+    
     my_ks = A%get_my_ks_index( ks )
 
-    Call A%my_k_points( my_ks )%data( 1 )%matrix%set_by_global( m, n, p, q, data )
+    If( my_ks /= NOT_ME ) Then
+       Call A%my_k_points( my_ks )%data( 1 )%matrix%set_by_global( m, n, p, q, data )
+    End If
 
   End Subroutine ks_array_set_global_real
 
-  Subroutine ks_array_set_global_complex( A, ks, m, n, p, q, data )
+  Subroutine ks_array_set_global_complex( A, s, k, m, n, p, q, data )
 
     ! Need to overload for irreps
 
     Class( ks_array )                 , Intent( InOut ) :: A
-    Integer                           , Intent( In    ) :: ks
+    Integer                           , Intent( In    ) :: s
+    Integer    , Dimension( : )       , Intent( In    ) :: k
     Integer                           , Intent( In    ) :: m
     Integer                           , Intent( In    ) :: n
     Integer                           , Intent( In    ) :: p
     Integer                           , Intent( In    ) :: q
     Complex( wp ), Dimension( m:, p: ), Intent( In    ) :: data
 
-    Integer :: my_ks
+    Integer :: ks, my_ks
 
+    ks = A%get_ks( k, s )
+    
     my_ks = A%get_my_ks_index( ks )
 
-    Call A%my_k_points( my_ks )%data( 1 )%matrix%set_by_global( m, n, p, q, data )
+    If( my_ks /= NOT_ME ) Then
+       Call A%my_k_points( my_ks )%data( 1 )%matrix%set_by_global( m, n, p, q, data )
+    End If
 
-  End Subroutine ks_array_set_global_complex
+  End Subroutine ks_array_set_global_complex  
 
 End Module k_point_matrix_module
