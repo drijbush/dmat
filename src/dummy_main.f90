@@ -855,8 +855,10 @@ Contains
     Allocate( ev( 1:n ) )
     Do k = 1, nk
        Call dsyev( 'v', 'l', n, a_global( :, :, k ), n, ev, work, Size( work ), error )
-       Write( *, '( a, t64, g24.16 )' ) 'Diagk :Real    Case:             :Max absolute eval diff : ', &
-            Maxval( Abs( E( k )%evals - ev ) )
+       If( rank == 0 ) Then
+          Write( *, '( a, t64, g24.16, 1x, a, i0 )' ) 'Diagk :Real    Case:             :Max absolute eval diff : ', &
+               Maxval( Abs( E( k )%evals - ev ) ), 'k = ', k
+       End If
 !!$       trace = 0.0_wp
 !!$       Do i = 1, n
 !!$          trace = trace + A_global( i, i, k )
