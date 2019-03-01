@@ -882,14 +882,16 @@ Contains
        If( k_types( k ) == K_POINT_REAL ) Then
           Call dsyev( 'v', 'l', n, A_global_r( :, :, k ), n, ev, rwork, Size( rwork ), error )
           Call B%get_by_global( s, k_points( :, k ), 1, n, 1, n, tmp_r )
+          Do i = 1, n
+             tmp_r( i, i ) = Abs( tmp_r( i, i ) - E( k )%evals( i ) )
+          End Do
        Else
           Call zheev( 'v', 'l', n, A_global_c( :, :, k ), n, ev, cwork, Size( cwork ), rwork, error )
           Call B%get_by_global( s, k_points( :, k ), 1, n, 1, n, tmp_c )
-          tmp_r = Abs( tmp_c )
+          Do i = 1, n
+             tmp_r( i, i ) = Abs( tmp_c( i, i ) - E( k )%evals( i ) )
+          End Do
        End If
-       Do i = 1, n
-          tmp_r( i, i ) = tmp_r( i, i ) - E( k )%evals( i )
-       End Do
        If( rank == 0 ) Then
           If( k_types( k ) == K_POINT_REAL ) Then
              Write( *, '( a, t64, g24.16, 1x, a, i0 )' ) 'Diagk :Real    Case:             :Max absolute eval diff : ', &
