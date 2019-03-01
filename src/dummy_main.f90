@@ -817,8 +817,11 @@ Contains
     
     Type( distributed_k_matrix ) :: base_k
 
-    Real( wp ), Dimension( :, :, : ), Allocatable :: A_global
-    Real( wp ), Dimension( :    ), Allocatable :: work, ev
+    Complex( wp ), Dimension( :, :, : ), Allocatable :: A_global_c
+    Complex( wp ), Dimension( : )      , Allocatable :: cwork
+
+    Real( wp ), Dimension( :, :, : ), Allocatable :: A_global_r, tmp_r
+    Real( wp ), Dimension( : )      , Allocatable :: rwork, ev
 
 !!$    Real( wp ) :: trace
     
@@ -832,36 +835,60 @@ Contains
     !HHAAACCCKKK while assume ns = 1
     s = 1
 
-    Allocate( A_global( 1:n, 1:n, 1:nk ) )
-    Call Random_number( A_global )
+    Allocate( A_global_r( 1:n, 1:n, 1:nk ) )
+    Call Random_number( A_global_r )
     Do k = 1, nk
-       A_global( :, :, k ) = A_global( :, :, k ) + Transpose( A_global( :, :, k  ) )
+       A_global_r( :, :, k ) = A_global_r( :, :, k ) + Transpose( A_global_r( :, :, k  ) )
+    End Do
+
+    Allocate( A_global_c( 1:n, 1:n, 1:nk ) )
+    Allocate( tmp_r( 1:n, 1:n, 1:nk ) )
+    Call Random_number( tmp_r )
+    A_global_c = tmp_r
+    Call Random_number( tmp_r )
+    A_global_c = A_global_c + Cmplx( 0.0_wp, tmp_r, Kind = wp )
+    Do k = 1, nk
+       A_global_c( :, :, k ) = A_global_c( :, :, k ) + Conjg( Transpose( A_global_c( :, :, k  ) ) )
     End Do
 
     Call ks_array_init( MPI_COMM_WORLD, base_k )
 
     Do k = 1, nk
        k_points( :, k ) = [ k, 0, 0 ]
-       k_types( k ) = K_POINT_REAL
+       k_types( k ) = Merge( K_POINT_REAL, K_POINT_COMPLEX, Mod( k, 2 ) == 0 )
     End Do
     Call A%create( ns, k_types, k_points, n, n, base_k )
     Do k = 1, nk
-       Call A%set_by_global( s, k_points( :, k ), 1, n, 1, n, A_global( :, :, k ) )
+       If( k_types( k ) == K_POINT_REAL ) Then
+          Call A%set_by_global( s, k_points( :, k ), 1, n, 1, n, A_global_r( :, :, k ) )
+       Else
+          Call A%set_by_global( s, k_points( :, k ), 1, n, 1, n, A_global_c( :, :, k ) )
+       End If
     End Do
 
     Call A%diag( Q, E )
 
-    Allocate( work( 1:64 * n ) )
+    Allocate( cwork( 1:64 * n ) )
+    Allocate( rwork( 1:64 * n ) )
     Allocate( ev( 1:n ) )
     Do k = 1, nk
-       Call dsyev( 'v', 'l', n, a_global( :, :, k ), n, ev, work, Size( work ), error )
+       If( k_types( k ) == K_POINT_REAL ) Then
+          Call dsyev( 'v', 'l', n, a_global_r( :, :, k ), n, ev, rwork, Size( rwork ), error )
+       Else
+          Call zheev( 'v', 'l', n, a_global_c( :, :, k ), n, ev, cwork, Size( cwork ), rwork, error )
+       End If
        If( rank == 0 ) Then
-          Write( *, '( a, t64, g24.16, 1x, a, i0 )' ) 'Diagk :Real    Case:             :Max absolute eval diff : ', &
-               Maxval( Abs( E( k )%evals - ev ) ), 'k = ', k
+          If( k_types( k ) == K_POINT_REAL ) Then
+             Write( *, '( a, t64, g24.16, 1x, a, i0 )' ) 'Diagk :Real    Case:             :Max absolute eval diff : ', &
+                  Maxval( Abs( E( k )%evals - ev ) ), 'k = ', k
+          Else
+             Write( *, '( a, t64, g24.16, 1x, a, i0 )' ) 'Diagk :Complex Case:             :Max absolute eval diff : ', &
+                  Maxval( Abs( E( k )%evals - ev ) ), 'k = ', k
+          End If
        End If
 !!$       trace = 0.0_wp
 !!$       Do i = 1, n
-!!$          trace = trace + A_global( i, i, k )
+!!$          trace = trace + A_global_r( i, i, k )
 !!$       End Do
 !!$       If( rank == 0 ) Then
 !!$          Write( *, * ) k, E( k )%evals( 1:Min( 4, n ) ), Sum( E( k )%evals ), trace, Sum( E( k )%evals ) - trace
@@ -872,5 +899,4 @@ Contains
 
   End Subroutine test_ks_array_diag
 
-  
 End Program dummy_main

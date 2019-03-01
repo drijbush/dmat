@@ -1,5 +1,9 @@
 Module k_point_matrix_module
 
+  ! IRREPS NEED MORE THOUGHT
+  !-------------------------
+  ! Currently assume 1 - i.e. nosymada
+  
   Use numbers_module      , Only : wp
   Use distributed_k_module, Only : distributed_k_matrix_init, &
        distributed_k_matrix_finalise, distributed_k_matrix
