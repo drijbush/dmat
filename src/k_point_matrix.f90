@@ -140,10 +140,12 @@ Contains
     
     Integer :: me, me_parent
     Integer :: ks_root, nb
+    Integer :: comm_compare
     Integer :: error
     Integer :: request
     Integer :: rsize, handle
     Integer :: my_ks, ks
+    Integer :: my_irrep
 
     Logical :: sending_data
     
@@ -151,44 +153,53 @@ Contains
     Q = A
 
     Do my_ks = 1, Size( A%my_k_points )
-       ks = A%get_all_ks_index( my_ks )
-       Call A%my_k_points( my_ks )%data( 1 )%matrix%diag( Q%my_k_points( my_ks )%data( 1 )%matrix, E( ks )%evals )
+       ! Irreps will need more thought - worrk currenly as burnt into as 1
+       Do my_irrep = 1, Size( A%my_k_points( my_ks )%data )
+          ks = A%get_all_ks_index( my_ks )
+          Call A%my_k_points( my_ks )%data( 1 )%matrix%diag( Q%my_k_points( my_ks )%data( my_irrep )%matrix, E( ks )%evals )
+       End Do
     End Do
 
     ! Replicate evals
+    ! Again needs thought for ireps
     Call mpi_comm_rank( A%parent_communicator, me_parent, error )
     Do ks = 1, Size( A%all_k_point_info )
        my_ks = A%get_my_ks_index( ks )
-       ! Work out who holds this set of evals and send how many there are
-       ! the root node of the communicator holding them back to the root node of the parent communicator
-       sending_data = .False.
-       If( my_ks /= NOT_ME ) Then
-          Call mpi_comm_rank( A%my_k_points( my_ks )%communicator, me, error )
-          sending_data = me == 0
-          If( sending_data ) then
-             buff_send( 1 ) = me
-             buff_send( 2 ) = Size( E( ks )%evals )
-             Call mpi_isend( buff_send, 2, MPI_INTEGER, 0, 10, A%parent_communicator, request, error )
+       ! Only need to replicate if the diag was done in a communicator containg a different set of
+       ! processes from the parent communicator 
+       Call MPI_Comm_compare( A%parent_communicator, A%my_k_points( my_ks )%communicator, comm_compare, error )
+       If( comm_compare == MPI_UNEQUAL ) Then
+          ! Work out who holds this set of evals and send how many there are
+          ! the root node of the communicator holding them back to the root node of the parent communicator
+          sending_data = .False.
+          If( my_ks /= NOT_ME ) Then
+             Call mpi_comm_rank( A%my_k_points( my_ks )%communicator, me, error )
+             sending_data = me == 0
+             If( sending_data ) then
+                buff_send( 1 ) = me
+                buff_send( 2 ) = Size( E( ks )%evals )
+                Call mpi_isend( buff_send, 2, MPI_INTEGER, 0, 10, A%parent_communicator, request, error )
+             End If
           End If
+          If( me_parent == 0 ) Then
+             Call mpi_recv( buff_recv, 2, MPI_INTEGER, MPI_ANY_SOURCE, 10, A%parent_communicator, MPI_STATUS_IGNORE, error )
+          End If
+          If( sending_data ) Then
+             Call mpi_wait( request, MPI_STATUS_IGNORE, error )
+          End If
+          ! Now on root of parent bcast back to all
+          Call mpi_bcast( buff_recv, 2, MPI_INTEGER, 0, A%parent_communicator, error )
+          ks_root = buff_recv( 1 )
+          nb      = buff_recv( 2 )
+          ! Now know how many evals we will recv - allocate memory if haven't done so already
+          If( .Not. Allocated( E( ks )%evals ) ) Then
+             Allocate( E( ks )%evals( 1:nb ) )
+          End If
+          ! And finally bcast out the values from the root node for this set of evals
+          Call mpi_sizeof( rdum, rsize, error )
+          Call mpi_type_match_size( MPI_TYPECLASS_REAL, rsize, handle, error )
+          Call mpi_bcast( E( ks )%evals, nb, handle, ks_root, A%parent_communicator, error )
        End If
-       If( me_parent == 0 ) Then
-          Call mpi_recv( buff_recv, 2, MPI_INTEGER, MPI_ANY_SOURCE, 10, A%parent_communicator, MPI_STATUS_IGNORE, error )
-       End If
-       If( sending_data ) Then
-          Call mpi_wait( request, MPI_STATUS_IGNORE, error )
-       End If
-       ! Now on root of parent bcast back to all
-       Call mpi_bcast( buff_recv, 2, MPI_INTEGER, 0, A%parent_communicator, error )
-       ks_root = buff_recv( 1 )
-       nb      = buff_recv( 2 )
-       ! Now know how many evals we will recv - allocate memory if haven't done so already
-       If( .Not. Allocated( E( ks )%evals ) ) Then
-          Allocate( E( ks )%evals( 1:nb ) )
-       End If
-       ! And finally bcast out the values from the root node for this set of evals
-       Call mpi_sizeof( rdum, rsize, error )
-       Call mpi_type_match_size( MPI_TYPECLASS_REAL, rsize, handle, error )
-       Call mpi_bcast( E( ks )%evals, nb, handle, ks_root, A%parent_communicator, error )          
     End Do
     
   End Subroutine ks_array_diag
