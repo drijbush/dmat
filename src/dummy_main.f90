@@ -879,6 +879,7 @@ Contains
     Allocate( rwork( 1:64 * n ) )
     Allocate( ev( 1:n ) )
     Do k = 1, nk
+       tmp_r = 0.0_wp
        If( k_types( k ) == K_POINT_REAL ) Then
           Call dsyev( 'v', 'l', n, A_global_r( :, :, k ), n, ev, rwork, Size( rwork ), error )
           Call B%get_by_global( s, k_points( :, k ), 1, n, 1, n, tmp_r )
