@@ -50,6 +50,13 @@ Module k_point_matrix_module
      Procedure, Private :: set_by_global_r => ks_array_set_global_real
      Procedure, Private :: set_by_global_c => ks_array_set_global_complex
      Generic            :: set_by_global   => set_by_global_r, set_by_global_c
+     Procedure, Private :: get_by_global_r => ks_array_get_global_real
+     Procedure, Private :: get_by_global_c => ks_array_get_global_complex
+     Generic            :: get_by_global   => get_by_global_r, get_by_global_c
+     Procedure          :: multiply => ks_array_mult
+     Generic            :: Operator( * ) => multiply
+     Procedure          :: dagger   => ks_array_dagger
+     Generic            :: Operator( .Dagger. ) => dagger
   End type ks_array
   
   Type, Public :: eval_storage
@@ -160,7 +167,7 @@ Contains
        ! Irreps will need more thought - worrk currenly as burnt into as 1
        Do my_irrep = 1, Size( A%my_k_points( my_ks )%data )
           ks = A%get_all_ks_index( my_ks )
-          Call A%my_k_points( my_ks )%data( 1 )%matrix%diag( Q%my_k_points( my_ks )%data( my_irrep )%matrix, E( ks )%evals )
+          Call A%my_k_points( my_ks )%data( my_irrep )%matrix%diag( Q%my_k_points( my_ks )%data( my_irrep )%matrix, E( ks )%evals )
        End Do
     End Do
 
@@ -207,6 +214,54 @@ Contains
     End Do
     
   End Subroutine ks_array_diag
+
+  Function ks_array_dagger( A ) Result( tA )
+
+    Type( ks_array ), Allocatable :: tA
+
+    Class( ks_array ), Intent( In ) :: A
+
+    Integer :: my_ks, my_irrep
+
+    Allocate( tA )
+    tA = A
+    
+    Do my_ks = 1, Size( A%my_k_points )
+       ! Irreps will need more thought - worrk currenly as burnt into as 1
+       Do my_irrep = 1, Size( A%my_k_points( my_ks )%data )
+          Associate( Aks  =>  A%my_k_points( my_ks )%data( my_irrep )%matrix, &
+                     tAks => tA%my_k_points( my_ks )%data( my_irrep )%matrix )
+            tAks = .Dagger. Aks
+          End Associate
+       End Do
+    End Do
+
+  End Function ks_array_dagger
+
+  Function ks_array_mult( A, B ) Result( C )
+
+    Type( ks_array ), Allocatable :: C
+
+    Class( ks_array ), Intent( In ) :: A
+    Type ( ks_array ), Intent( In ) :: B
+
+    Integer :: my_ks, my_irrep
+
+    Allocate( C )
+    C = A
+    
+    Do my_ks = 1, Size( A%my_k_points )
+       ! Irreps will need more thought - worrk currenly as burnt into as 1
+       Do my_irrep = 1, Size( A%my_k_points( my_ks )%data )
+          Associate( Aks => A%my_k_points( my_ks )%data( my_irrep )%matrix, &
+                     Bks => B%my_k_points( my_ks )%data( my_irrep )%matrix, &
+                     Cks => C%my_k_points( my_ks )%data( my_irrep )%matrix )
+            Cks = Aks * Bks
+          End Associate
+       End Do
+    End Do
+
+  End Function ks_array_mult
 
   Pure Function get_all_ks_index( A, my_ks ) Result( ks )
 
@@ -314,5 +369,61 @@ Contains
     End If
 
   End Subroutine ks_array_set_global_complex  
+
+  Subroutine ks_array_get_global_real( A, s, k, m, n, p, q, data )
+
+    ! Need to overload for irreps
+
+    Class( ks_array )              , Intent( In    ) :: A
+    Integer                        , Intent( In    ) :: s
+    Integer    , Dimension( : )    , Intent( In    ) :: k
+    Integer                        , Intent( In    ) :: m
+    Integer                        , Intent( In    ) :: n
+    Integer                        , Intent( In    ) :: p
+    Integer                        , Intent( In    ) :: q
+    Real( wp ), Dimension( m:, p: ), Intent(   Out ) :: data
+
+    Integer :: ks, my_ks
+
+    ks = A%get_ks( k, s )
+    
+    my_ks = A%get_my_ks_index( ks )
+
+    If( my_ks /= NOT_ME ) Then
+       Call A%my_k_points( my_ks )%data( 1 )%matrix%get_by_global( m, n, p, q, data )
+    End If
+
+    !TODO
+    ! Need to repliacte data over parent communicator if split ks points
+
+  End Subroutine ks_array_get_global_real
+
+  Subroutine ks_array_get_global_complex( A, s, k, m, n, p, q, data )
+
+    ! Need to overload for irreps
+
+    Class( ks_array )                 , Intent( In    ) :: A
+    Integer                           , Intent( In    ) :: s
+    Integer    , Dimension( : )       , Intent( In    ) :: k
+    Integer                           , Intent( In    ) :: m
+    Integer                           , Intent( In    ) :: n
+    Integer                           , Intent( In    ) :: p
+    Integer                           , Intent( In    ) :: q
+    Complex( wp ), Dimension( m:, p: ), Intent(   Out ) :: data
+
+    Integer :: ks, my_ks
+
+    ks = A%get_ks( k, s )
+    
+    my_ks = A%get_my_ks_index( ks )
+
+    If( my_ks /= NOT_ME ) Then
+       Call A%my_k_points( my_ks )%data( 1 )%matrix%get_by_global( m, n, p, q, data )
+    End If
+
+    !TODO
+    ! Need to repliacte data over parent communicator if split ks points
+
+  End Subroutine ks_array_get_global_complex
 
 End Module k_point_matrix_module

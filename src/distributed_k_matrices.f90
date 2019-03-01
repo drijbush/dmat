@@ -24,7 +24,7 @@ Module distributed_k_module
    Contains
      Procedure            :: create               => distributed_k_matrix_create
      Procedure            :: dagger               => distributed_k_matrix_dagger
-     Generic              :: operator( .Dagger. ) => dagger
+     Generic              :: Operator( .Dagger. ) => dagger
      Procedure            :: diag                 => distributed_k_matrix_diag
      Procedure            :: multiply             => distributed_k_matrix_mult
      Generic              :: Operator( * )        => multiply

@@ -812,15 +812,19 @@ Contains
 
     Type( ks_array ) :: A
     Type( ks_array ) :: Q
+    Type( ks_array ) :: QT
+    Type( ks_array ) :: B
     
     Type( eval_storage ), Dimension( 1:nk ) :: E
     
     Type( distributed_k_matrix ) :: base_k
 
     Complex( wp ), Dimension( :, :, : ), Allocatable :: A_global_c
+    Complex( wp ), Dimension( :, :    ), Allocatable :: tmp_c
     Complex( wp ), Dimension( : )      , Allocatable :: cwork
 
-    Real( wp ), Dimension( :, :, : ), Allocatable :: A_global_r, tmp_r
+    Real( wp ), Dimension( :, :, : ), Allocatable :: A_global_r
+    Real( wp ), Dimension( :, :    ), Allocatable :: tmp_r
     Real( wp ), Dimension( : )      , Allocatable :: rwork, ev
 
 !!$    Real( wp ) :: trace
@@ -842,12 +846,13 @@ Contains
     End Do
 
     Allocate( A_global_c( 1:n, 1:n, 1:nk ) )
-    Allocate( tmp_r( 1:n, 1:n, 1:nk ) )
-    Call Random_number( tmp_r )
-    A_global_c = tmp_r
-    Call Random_number( tmp_r )
-    A_global_c = A_global_c + Cmplx( 0.0_wp, tmp_r, Kind = wp )
+    Allocate( tmp_r( 1:n, 1:n ) )
+    Allocate( tmp_c( 1:n, 1:n ) )
     Do k = 1, nk
+       Call Random_number( tmp_r )
+       A_global_c( :, :, k ) = tmp_r
+       Call Random_number( tmp_r )
+       A_global_c( :, :, k ) = A_global_c( :, :, k ) + Cmplx( 0.0_wp, tmp_r, Kind = wp )
        A_global_c( :, :, k ) = A_global_c( :, :, k ) + Conjg( Transpose( A_global_c( :, :, k  ) ) )
     End Do
 
@@ -867,23 +872,33 @@ Contains
     End Do
 
     Call A%diag( Q, E )
+    QT = .Dagger. Q
+    B = QT * A * Q
 
     Allocate( cwork( 1:64 * n ) )
     Allocate( rwork( 1:64 * n ) )
     Allocate( ev( 1:n ) )
     Do k = 1, nk
        If( k_types( k ) == K_POINT_REAL ) Then
-          Call dsyev( 'v', 'l', n, a_global_r( :, :, k ), n, ev, rwork, Size( rwork ), error )
+          Call dsyev( 'v', 'l', n, A_global_r( :, :, k ), n, ev, rwork, Size( rwork ), error )
+          Call B%get_by_global( s, k_points( :, k ), 1, n, 1, n, tmp_r )
        Else
-          Call zheev( 'v', 'l', n, a_global_c( :, :, k ), n, ev, cwork, Size( cwork ), rwork, error )
+          Call zheev( 'v', 'l', n, A_global_c( :, :, k ), n, ev, cwork, Size( cwork ), rwork, error )
+          Call B%get_by_global( s, k_points( :, k ), 1, n, 1, n, tmp_c )
+          tmp_r = Abs( tmp_c )
        End If
+       Do i = 1, n
+          tmp_r( i, i ) = tmp_r( i, i ) - E( k )%evals( i )
+       End Do
        If( rank == 0 ) Then
           If( k_types( k ) == K_POINT_REAL ) Then
              Write( *, '( a, t64, g24.16, 1x, a, i0 )' ) 'Diagk :Real    Case:             :Max absolute eval diff : ', &
                   Maxval( Abs( E( k )%evals - ev ) ), 'k = ', k
+             Write( *, '( a, t64, g24.16 )' ) 'Diagk :Real    Case:             :Max sim tran trace test: ', Maxval( Abs( tmp_r ) )
           Else
              Write( *, '( a, t64, g24.16, 1x, a, i0 )' ) 'Diagk :Complex Case:             :Max absolute eval diff : ', &
                   Maxval( Abs( E( k )%evals - ev ) ), 'k = ', k
+             Write( *, '( a, t64, g24.16 )' ) 'Diagk :Complex Case:             :Max sim tran trace test: ', Maxval( Abs( tmp_r ) )
           End If
        End If
 !!$       trace = 0.0_wp
