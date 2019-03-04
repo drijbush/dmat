@@ -141,7 +141,7 @@ Contains
     
   End Subroutine ks_array_create
 
-  Subroutine ks_array_split_ks( A, complex_weight, split_A )
+  Subroutine ks_array_split_ks( A, complex_weight, split_A, redistribute )
 
     ! Split a ks_array A so the resulting ks_array is k point distributed
 
@@ -150,6 +150,7 @@ Contains
     Class( ks_array     ), Intent( In    ) :: A
     Real ( wp           ), Intent( In    ) :: complex_weight
     Type ( ks_array     ), Intent(   Out ) :: split_A
+    Logical, Optional    , Intent( In    ) :: redistribute
 
     Type( distributed_k_matrix ) :: base_matrix
 
@@ -160,14 +161,22 @@ Contains
     Integer, Dimension( : ), Allocatable :: this_k_indices
 
     Integer :: m, n
-    Integer :: nks
+    Integer :: n_ks
     Integer :: n_procs_parent, me_parent, my_colour, k_comm, n_my_ks
     Integer :: this_k_type, this_s
     Integer :: top_rank
     Integer :: cost
     Integer :: error
-    Integer :: ks
-    
+    Integer :: ks, this_ks
+
+    Logical :: loc_redist
+
+    If( Present( redistribute ) ) Then
+       loc_redist = redistribute
+    Else
+       loc_redist =.True.
+    End If
+
     ! Set up stuff relevant to all k points
     split_A%all_k_point_info    = A%all_k_point_info
     split_A%parent_communicator = A%parent_communicator
@@ -176,9 +185,9 @@ Contains
 
     ! First split the communicator
     ! Generate an array for the weights
-    nks = Size( split_A%all_k_point_info )
-    Allocate( weights( 1:nks ) )
-    Do ks = 1, nks
+    n_ks = Size( split_A%all_k_point_info )
+    Allocate( weights( 1:n_ks ) )
+    Do ks = 1, n_ks
        weights( ks ) = Merge( 1.0_wp, complex_weight, split_A%all_k_point_info( ks )%k_type == K_POINT_REAL )
     End Do
 
@@ -188,7 +197,7 @@ Contains
     Call MPI_Comm_size( split_A%parent_communicator,      me_parent, error )
     cost = Nint( Sum( weights ) )
     ! Scale up weights so fits inside the parent comm
-    Allocate( n_procs_ks( 1:nks ) )
+    Allocate( n_procs_ks( 1:n_ks ) )
     n_procs_ks = Nint( weights * ( n_procs_parent / cost ) )
     k_split_strategy: If( Sum( n_procs_ks )  <= n_procs_parent ) Then
        
@@ -201,10 +210,10 @@ Contains
        If( me_parent > Sum( n_procs_ks ) - 1 ) Then
           my_colour  = MPI_UNDEFINED
           my_ks( 1 ) = INVALID
-          n_my_ks       = 0
+          n_my_ks    = 0
        Else
           top_rank = 0
-          Do ks = 1, nks
+          Do ks = 1, n_ks
              top_rank = top_rank + n_procs_ks( ks )
              If( me_parent < top_rank ) Then
                 Exit
@@ -223,6 +232,8 @@ Contains
 
        ! Purely to stop gfortran whingeing before I have implemnted this bit - remove once done
        n_my_ks = 3
+       this_s = 2
+       this_k_indices = 4
 
     End If k_split_strategy
 
@@ -231,6 +242,7 @@ Contains
 
     ! Now start setting up the k points held by this set of processes (if any!)
     Allocate( split_A%my_k_points( 1:n_my_ks ) )
+    Allocate( this_k_indices( 1:Size( A%all_k_point_info( 1 )%k_indices ) ) )
     Do ks = 1, n_my_ks
        split_A%my_k_points( ks )%info = split_A%all_k_point_info( my_ks( ks ) )
        ! Irreps not split yet hence no split at this level
@@ -248,6 +260,21 @@ Contains
             this_s, this_k_indices, m, n, base_matrix )
        split_A%my_k_points( ks )%communicator = base_matrix%get_comm()
     End Do
+
+    ! Finally if required redistribute the data from the all distribution into the split distribution
+    If( loc_redist ) Then
+       ! All procs in parent comm must be involved as all hold data for the unsplit matrx
+       Do ks = 1, n_ks
+          ! Find out if I hold this in the split distribution
+          this_ks = split_A%get_my_ks_index( ks )
+          If( this_ks /= NOT_ME ) Then
+             Call matrix_redistribute( A%parent_communicator, A%my_k_points( ks )%data( 1 )%matrix, &
+                  split_A%my_k_points( this_ks )%data( 1 )%matrix )
+          Else
+             Call matrix_redistribute( A%parent_communicator, A%my_k_points( ks )%data( 1 )%matrix )
+          End If
+       End Do
+    End If
 
   End Subroutine ks_array_split_ks
 

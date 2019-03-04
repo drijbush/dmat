@@ -192,8 +192,9 @@ Contains
        matrix%data = ieee_value( matrix%data, ieee_signaling_nan )
     Class is ( complex_distributed_matrix )
        Allocate( matrix%data( 1:lda, 1:sda  ) )
-       ! No signalling nan fro complex
-       matrix%data = ieee_value( 0.0_wp, ieee_signaling_nan )
+       ! No signalling nan for complex
+       matrix%data = Cmplx( ieee_value( 0.0_wp, ieee_signaling_nan ), &
+            ieee_value( 0.0_wp, ieee_signaling_nan ), wp )
     End Select
 
   Contains
