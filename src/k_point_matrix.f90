@@ -161,7 +161,7 @@ Contains
 
     Integer :: m, n
     Integer :: nks
-    Integer :: n_procs_parent, me_parent, my_colour, k_comm, n_ks
+    Integer :: n_procs_parent, me_parent, my_colour, k_comm, n_my_ks
     Integer :: this_k_type, this_s
     Integer :: top_rank
     Integer :: cost
@@ -193,15 +193,15 @@ Contains
     k_split_strategy: If( Sum( n_procs_ks )  <= n_procs_parent ) Then
        
        ! 1) There are sufficent processors for each k point to have its own, separate set if processors which work on it
-       n_ks  = 1
-       Allocate( my_ks( 1:n_ks ) ) 
+       n_my_ks  = 1
+       Allocate( my_ks( 1:n_my_ks ) ) 
 
        ! Decide which group ( if any ) I am in can probably write this more neatly but lets keep
        ! it explicit as I'm getting a little confused
        If( me_parent > Sum( n_procs_ks ) - 1 ) Then
           my_colour  = MPI_UNDEFINED
           my_ks( 1 ) = INVALID
-          n_ks       = 0
+          n_my_ks       = 0
        Else
           top_rank = 0
           Do ks = 1, nks
@@ -216,35 +216,38 @@ Contains
           End Do
        End If
 
-       ! Can now split the communicator
-       Call MPI_Comm_split( split_A%parent_communicator, my_colour, 0, k_comm, error )
-
-       ! Now start setting up the k points held by this set of processes (if any!)
-       Allocate( split_A%my_k_points( 1:n_ks ) )
-       Do ks = 1, n_ks
-          split_A%my_k_points( ks )%info = split_A%all_k_point_info( my_ks( ks ) )
-          ! Irreps not split yet hence no split at this level
-          Allocate( split_A%my_k_points( ks )%data( 1:1 ) )
-          split_A%my_k_points( ks )%data( 1 )%label = 1
-          ! Now need to generate a source matrix from the communicator - precisely what the init routine does!!
-          Call distributed_k_matrix_init( k_comm, base_matrix )
-          this_k_type    = split_A%all_k_point_info( my_ks( ks ) )%k_type
-          this_s         = split_A%all_k_point_info( my_ks( ks ) )%spin
-          this_k_indices = split_A%all_k_point_info( my_ks( ks ) )%k_indices
-          ! Need to get sizes for creation
-          m = A%my_k_points( my_ks( ks ) )%data( 1 )%matrix%size( 1 )
-          n = A%my_k_points( my_ks( ks ) )%data( 1 )%matrix%size( 2 )
-          Call split_A%my_k_points( ks )%data( 1 )%matrix%create( this_k_type == K_POINT_COMPLEX, &
-               this_s, this_k_indices, m, n, base_matrix )
-          split_A%my_k_points( ks )%communicator = base_matrix%get_comm()
-       End Do
-
     Else
 
        ! Second strategy - too few procs to have 1 k point per communicator
        !NEED TO WRITE THIS!!
 
+       ! Purely to stop gfortran whingeing before I have implemnted this bit - remove once done
+       n_my_ks = 3
+
     End If k_split_strategy
+
+    ! Can now split the communicator
+    Call MPI_Comm_split( split_A%parent_communicator, my_colour, 0, k_comm, error )
+
+    ! Now start setting up the k points held by this set of processes (if any!)
+    Allocate( split_A%my_k_points( 1:n_my_ks ) )
+    Do ks = 1, n_my_ks
+       split_A%my_k_points( ks )%info = split_A%all_k_point_info( my_ks( ks ) )
+       ! Irreps not split yet hence no split at this level
+       Allocate( split_A%my_k_points( ks )%data( 1:1 ) )
+       split_A%my_k_points( ks )%data( 1 )%label = 1
+       ! Now need to generate a source matrix from the communicator - precisely what the init routine does!!
+       Call distributed_k_matrix_init( k_comm, base_matrix )
+       this_k_type    = split_A%all_k_point_info( my_ks( ks ) )%k_type
+       this_s         = split_A%all_k_point_info( my_ks( ks ) )%spin
+       this_k_indices = split_A%all_k_point_info( my_ks( ks ) )%k_indices
+       ! Need to get sizes for creation
+       m = A%my_k_points( my_ks( ks ) )%data( 1 )%matrix%size( 1 )
+       n = A%my_k_points( my_ks( ks ) )%data( 1 )%matrix%size( 2 )
+       Call split_A%my_k_points( ks )%data( 1 )%matrix%create( this_k_type == K_POINT_COMPLEX, &
+            this_s, this_k_indices, m, n, base_matrix )
+       split_A%my_k_points( ks )%communicator = base_matrix%get_comm()
+    End Do
 
   End Subroutine ks_array_split_ks
 

@@ -151,6 +151,8 @@ Contains
 
   Subroutine matrix_create( matrix, m, n, source_matrix )
 
+    Use, Intrinsic :: ieee_arithmetic
+
     Class( distributed_matrix ), Intent(   Out ) :: matrix
     Integer                    , Intent( In    ) :: m
     Integer                    , Intent( In    ) :: n
@@ -187,8 +189,11 @@ Contains
        Stop "Illegal type in matrix_create"
     Class is ( real_distributed_matrix )
        Allocate( matrix%data( 1:lda, 1:sda  ) )
+       matrix%data = ieee_value( matrix%data, ieee_signaling_nan )
     Class is ( complex_distributed_matrix )
        Allocate( matrix%data( 1:lda, 1:sda  ) )
+       ! No signalling nan fro complex
+       matrix%data = ieee_value( 0.0_wp, ieee_signaling_nan )
     End Select
 
   Contains
