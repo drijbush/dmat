@@ -251,7 +251,7 @@ Contains
     C = A
     
     Do my_ks = 1, Size( A%my_k_points )
-       ! Irreps will need more thought - worrk currenly as burnt into as 1
+       ! Irreps will need more thought - work currenly as burnt into as 1
        Do my_irrep = 1, Size( A%my_k_points( my_ks )%data )
           Associate( Aks => A%my_k_points( my_ks )%data( my_irrep )%matrix, &
                      Bks => B%my_k_points( my_ks )%data( my_irrep )%matrix, &

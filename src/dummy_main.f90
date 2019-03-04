@@ -828,6 +828,7 @@ Contains
     Real( wp ), Dimension( : )      , Allocatable :: rwork, ev
 
 !!$    Real( wp ) :: trace
+    Real( wp ) :: rand
     
     Integer, Dimension( 1:3, 1:nk ) :: k_points
     Integer, Dimension(      1:nk ) :: k_types
@@ -860,7 +861,8 @@ Contains
 
     Do k = 1, nk
        k_points( :, k ) = [ k, 0, 0 ]
-       k_types( k ) = Merge( K_POINT_REAL, K_POINT_COMPLEX, Mod( k, 2 ) == 0 )
+       Call Random_number( rand )
+       k_types( k ) = Merge( K_POINT_REAL, K_POINT_COMPLEX, rand > 0.5_wp )
     End Do
     Call A%create( ns, k_types, k_points, n, n, base_k )
     Do k = 1, nk
