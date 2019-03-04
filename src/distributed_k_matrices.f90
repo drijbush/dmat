@@ -61,6 +61,7 @@ Module distributed_k_module
      Procedure            :: global_to_local      => distributed_k_matrix_g_to_l
      Procedure            :: local_to_global      => distributed_k_matrix_l_to_g
      Procedure            :: local_size           => distributed_k_matrix_local_size
+     Procedure            :: size                 => distributed_k_matrix_size
      Procedure            :: get_comm             => distributed_k_matrix_get_communicator
   End Type distributed_k_matrix
 
@@ -1054,6 +1055,21 @@ Contains
 
   End Function distributed_k_matrix_l_to_g
 
+  Function distributed_k_matrix_size( A, dim ) Result( n )
+
+    Integer :: n
+
+    Class( distributed_k_matrix ), Intent( In )           :: A
+    Integer                      , Intent( In ), Optional :: dim
+
+    If( .Not. Present( dim ) ) Then
+       n = A%k_point%matrix%size( 1 ) * A%k_point%matrix%size( 2 )
+    Else
+       n = A%k_point%matrix%size( dim )
+    End If
+
+  End Function distributed_k_matrix_size
+
   Function distributed_k_matrix_local_size( A, dim ) Result( n )
 
     Integer :: n
@@ -1080,3 +1096,4 @@ Contains
   End Function distributed_k_matrix_get_communicator
 
 End Module distributed_k_module
+

@@ -17,6 +17,7 @@ Module k_point_matrix_module
   Integer, Private, Parameter :: NOT_ME  = -2
 
   Type k_point_info
+     Integer                              :: k_type
      Integer                              :: spin
      Integer, Dimension( : ), Allocatable :: k_indices
   End type k_point_info
@@ -42,20 +43,21 @@ Module k_point_matrix_module
      ! Want to hide eventually
      Integer                                           :: parent_communicator = INVALID
    Contains
-     Procedure :: create => ks_array_create
-     Procedure :: diag   => ks_array_diag
+     Procedure          :: create               => ks_array_create
+     Procedure          :: split_k              => ks_array_split_ks
+     Procedure          :: diag                 => ks_array_diag
      Procedure, Private :: get_all_ks_index
      Procedure, Private :: get_my_ks_index
      Procedure, Private :: get_ks
-     Procedure, Private :: set_by_global_r => ks_array_set_global_real
-     Procedure, Private :: set_by_global_c => ks_array_set_global_complex
-     Generic            :: set_by_global   => set_by_global_r, set_by_global_c
-     Procedure, Private :: get_by_global_r => ks_array_get_global_real
-     Procedure, Private :: get_by_global_c => ks_array_get_global_complex
-     Generic            :: get_by_global   => get_by_global_r, get_by_global_c
-     Procedure          :: multiply => ks_array_mult
-     Generic            :: Operator( * ) => multiply
-     Procedure          :: dagger   => ks_array_dagger
+     Procedure, Private :: set_by_global_r      => ks_array_set_global_real
+     Procedure, Private :: set_by_global_c      => ks_array_set_global_complex
+     Generic            :: set_by_global        => set_by_global_r, set_by_global_c
+     Procedure, Private :: get_by_global_r      => ks_array_get_global_real
+     Procedure, Private :: get_by_global_c      => ks_array_get_global_complex
+     Generic            :: get_by_global        => get_by_global_r, get_by_global_c
+     Procedure          :: multiply             => ks_array_mult
+     Generic            :: Operator( * )        => multiply
+     Procedure          :: dagger               => ks_array_dagger
      Generic            :: Operator( .Dagger. ) => dagger
   End type ks_array
   
@@ -77,7 +79,7 @@ Contains
     Integer                        , Intent( In    ) :: comm
     Type   ( distributed_k_matrix ), Intent(   Out ) :: base_matrix
 
-    Call  distributed_k_matrix_init( comm, base_matrix ) 
+    Call distributed_k_matrix_init( comm, base_matrix ) 
 
   End Subroutine ks_array_init
 
@@ -89,7 +91,7 @@ Contains
 
   Subroutine ks_array_create( matrices, n_spin, k_point_type, k_points, m, n, source )
 
-    ! Create a matrix in all k point mode with no irreps //ism
+    ! Create a matrix in all k point mode with no irreps parallelism
     
     ! Also want to think about what kind of object should be used as a source
     
@@ -112,6 +114,7 @@ Contains
     Do s = 1, n_spin
        Do k = 1, n_k_points
           ks = ks + 1
+          matrices%all_k_point_info( ks )%k_type    = k_point_type( k )
           matrices%all_k_point_info( ks )%spin      = s
           matrices%all_k_point_info( ks )%k_indices = k_points( :, k )
        End Do
@@ -123,7 +126,8 @@ Contains
     Do s = 1, n_spin
        Do k = 1, n_k_points
           ks = ks + 1
-          matrices%my_k_points( ks )%info%spin    = s
+          matrices%my_k_points( ks )%info%k_type    = k_point_type( k )
+          matrices%my_k_points( ks )%info%spin      = s
           matrices%my_k_points( ks )%info%k_indices = k_points( :, k )
           Allocate( matrices%my_k_points( ks )%data( 1:1 ) )
           matrices%my_k_points( ks )%data( 1 )%label = 1
@@ -136,6 +140,113 @@ Contains
     matrices%parent_communicator = source%get_comm()
     
   End Subroutine ks_array_create
+
+  Subroutine ks_array_split_ks( A, complex_weight, split_A )
+
+    ! Split a ks_array A so the resulting ks_array is k point distributed
+
+    Use mpi
+    
+    Class( ks_array     ), Intent( In    ) :: A
+    Real ( wp           ), Intent( In    ) :: complex_weight
+    Type ( ks_array     ), Intent(   Out ) :: split_A
+
+    Type( distributed_k_matrix ) :: base_matrix
+
+    Real( wp ), Dimension( : ), Allocatable :: weights
+
+    Integer, Dimension( : ), Allocatable :: n_procs_ks
+    Integer, Dimension( : ), Allocatable :: my_ks
+    Integer, Dimension( : ), Allocatable :: this_k_indices
+
+    Integer :: m, n
+    Integer :: nks
+    Integer :: n_procs_parent, me_parent, my_colour, k_comm, n_ks
+    Integer :: this_k_type, this_s
+    Integer :: top_rank
+    Integer :: cost
+    Integer :: error
+    Integer :: ks
+    
+    ! Set up stuff relevant to all k points
+    split_A%all_k_point_info    = A%all_k_point_info
+    split_A%parent_communicator = A%parent_communicator
+
+    ! Now split the k points and return the new structure in split_A
+
+    ! First split the communicator
+    ! Generate an array for the weights
+    nks = Size( split_A%all_k_point_info )
+    Allocate( weights( 1:nks ) )
+    Do ks = 1, nks
+       weights( ks ) = Merge( 1.0_wp, complex_weight, split_A%all_k_point_info( ks )%k_type == K_POINT_REAL )
+    End Do
+
+     !THIS WHOLE SPLITTING STRATEGY PROBABLY NEEDS MORE THOUGHT
+    ! Two possible cases
+    Call MPI_Comm_size( split_A%parent_communicator, n_procs_parent, error )
+    Call MPI_Comm_size( split_A%parent_communicator,      me_parent, error )
+    cost = Nint( Sum( weights ) )
+    ! Scale up weights so fits inside the parent comm
+    Allocate( n_procs_ks( 1:nks ) )
+    n_procs_ks = Nint( weights * ( n_procs_parent / cost ) )
+    k_split_strategy: If( Sum( n_procs_ks )  <= n_procs_parent ) Then
+       
+       ! 1) There are sufficent processors for each k point to have its own, separate set if processors which work on it
+       n_ks  = 1
+       Allocate( my_ks( 1:n_ks ) ) 
+
+       ! Decide which group ( if any ) I am in can probably write this more neatly but lets keep
+       ! it explicit as I'm getting a little confused
+       If( me_parent > Sum( n_procs_ks ) - 1 ) Then
+          my_colour  = MPI_UNDEFINED
+          my_ks( 1 ) = INVALID
+          n_ks       = 0
+       Else
+          top_rank = 0
+          Do ks = 1, nks
+             top_rank = top_rank + n_procs_ks( ks )
+             If( me_parent < top_rank ) Then
+                Exit
+                ! Colur for comm spliting
+                my_colour = ks
+                ! As in this strategy we only have 1 k point store which one it is
+                my_ks( 1 ) = ks
+             End If
+          End Do
+       End If
+
+       ! Can now split the communicator
+       Call MPI_Comm_split( split_A%parent_communicator, my_colour, 0, k_comm, error )
+
+       ! Now start setting up the k points held by this set of processes (if any!)
+       Allocate( split_A%my_k_points( 1:n_ks ) )
+       Do ks = 1, n_ks
+          split_A%my_k_points( ks )%info = split_A%all_k_point_info( my_ks( ks ) )
+          ! Irreps not split yet hence no split at this level
+          Allocate( split_A%my_k_points( ks )%data( 1:1 ) )
+          split_A%my_k_points( ks )%data( 1 )%label = 1
+          ! Now need to generate a source matrix from the communicator - precisely what the init routine does!!
+          Call distributed_k_matrix_init( k_comm, base_matrix )
+          this_k_type    = split_A%all_k_point_info( my_ks( ks ) )%k_type
+          this_s         = split_A%all_k_point_info( my_ks( ks ) )%spin
+          this_k_indices = split_A%all_k_point_info( my_ks( ks ) )%k_indices
+          ! Need to get sizes for creation
+          m = A%my_k_points( my_ks( ks ) )%data( 1 )%matrix%size( 1 )
+          n = A%my_k_points( my_ks( ks ) )%data( 1 )%matrix%size( 2 )
+          Call split_A%my_k_points( ks )%data( 1 )%matrix%create( this_k_type == K_POINT_COMPLEX, &
+               this_s, this_k_indices, m, n, base_matrix )
+          split_A%my_k_points( ks )%communicator = base_matrix%get_comm()
+       End Do
+
+    Else
+
+       ! Second strategy - too few procs to have 1 k point per communicator
+       !NEED TO WRITE THIS!!
+
+    End If k_split_strategy
+
+  End Subroutine ks_array_split_ks
 
   Subroutine ks_array_diag( A, Q, E )
 
@@ -167,7 +278,10 @@ Contains
        ! Irreps will need more thought - worrk currenly as burnt into as 1
        Do my_irrep = 1, Size( A%my_k_points( my_ks )%data )
           ks = A%get_all_ks_index( my_ks )
-          Call A%my_k_points( my_ks )%data( my_irrep )%matrix%diag( Q%my_k_points( my_ks )%data( my_irrep )%matrix, E( ks )%evals )
+          Associate( Aks => A%my_k_points( my_ks )%data( my_irrep )%matrix, &
+                     Qks => Q%my_k_points( my_ks )%data( my_irrep )%matrix )
+            Call Aks%diag( Qks, E( ks )%evals )
+          End Associate
        End Do
     End Do
 
@@ -394,7 +508,7 @@ Contains
     End If
 
     !TODO
-    ! Need to repliacte data over parent communicator if split ks points
+    ! Need to replicate data over parent communicator if split ks points
 
   End Subroutine ks_array_get_global_real
 
@@ -422,7 +536,7 @@ Contains
     End If
 
     !TODO
-    ! Need to repliacte data over parent communicator if split ks points
+    ! Need to replicate data over parent communicator if split ks points
 
   End Subroutine ks_array_get_global_complex
 

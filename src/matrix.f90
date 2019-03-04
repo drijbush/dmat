@@ -26,6 +26,7 @@ Module distributed_matrix_module
      Procedure          :: get_maps        => matrix_get_maps
      Procedure          :: global_to_local => matrix_global_to_local
      Procedure          :: local_to_global => matrix_local_to_global
+     Procedure          :: size            => matrix_size
      Procedure          :: local_size      => matrix_local_size
      Procedure          :: get_comm        => matrix_communicator
   End type distributed_matrix
@@ -1475,16 +1476,42 @@ Contains
     Class( distributed_matrix ), Intent( In ) :: A
     Integer                    , Intent( In ) :: dim
 
+    If( dim <= 2 ) Then
+
+       Select Type( A )
+       Class Default
+          Stop "Illegal type in matrix_local_size"
+       Class is ( real_distributed_matrix )
+          n = Size( A%data, Dim = dim )
+       Class is ( complex_distributed_matrix )
+          n = Size( A%data, Dim = dim )
+       End Select
+
+    Else
+
+       Stop "Ilegal dimension in matrix_local_size"
+
+    End If
+       
+  End Function matrix_local_size
+  
+  Function matrix_size( A, dim ) Result( n )
+
+    Integer :: n
+
+    Class( distributed_matrix ), Intent( In ) :: A
+    Integer                    , Intent( In ) :: dim
+
     Select Case( dim )
     Case Default
-       Stop "Illegal dim in local_size"
+       Stop "Ilegal dimension in matrix_size"
     Case( 1 )
        Call A%matrix_map%get_data( m = n )
     Case( 2 )
        Call A%matrix_map%get_data( n = n )
     End Select
        
-  End Function matrix_local_size
+  End Function matrix_size
   
   Function matrix_communicator( A ) Result( c )
 
