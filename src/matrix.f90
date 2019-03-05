@@ -108,6 +108,7 @@ Module distributed_matrix_module
   Public :: distributed_matrix_init
   Public :: distributed_matrix_finalise
   Public :: distributed_matrix_set_default_blocking
+  Public :: distributed_matrix_remap_data
   
   Private
 
@@ -116,6 +117,12 @@ Module distributed_matrix_module
   Integer, Parameter, Private :: default_block_fac = 4
   Integer,            Private :: block_fac = default_block_fac
 
+  Interface distributed_matrix_remap_data
+     Procedure matrix_remap_data_real
+     Procedure matrix_remap_data_complex
+  End Interface distributed_matrix_remap_data
+
+  
 Contains
 
   Subroutine distributed_matrix_init( comm, base_matrix )
@@ -1528,20 +1535,114 @@ Contains
     c = A%matrix_map%get_comm()
     
   End Function matrix_communicator
+
+  Subroutine matrix_remap_data_real( parent_comm, A, B )
+
+    Integer                        ,           Intent( In    ) :: parent_comm
+    Type( real_distributed_matrix ), Optional, Intent( In    ) :: A
+    Type( real_distributed_matrix ), Optional, Intent( InOut ) :: B
+
+    Type( matrix_mapping ) :: mapping
+
+    Real( wp ), Dimension( 1:1, 1:1 ) :: dum_a, dum_b
+
+    Integer, Dimension( 1:9 ) :: desc_A, desc_b
+    
+    Integer :: m, n
+    Integer :: parent_ctxt, ctxt_a, ctxt_b
+    
+    If( .Not. Present( A ) .And. .Not. Present( B ) ) Then
+       Stop "In matrix_remap_data_real one of A or B must be supplied"
+    End If
+    
+    ! Generate a context fron the parent_communicator
+    Call matrix_mapping_init( parent_comm, mapping )
+    Call mapping%get_data( ctxt = parent_ctxt )
+
+    m = -1
+    n = -1
+    ! Get contexts and descriptors for the matrices
+    If( Present( A ) ) Then
+       Call A%matrix_map%get_data( ctxt = ctxt_A, m = m, n = n )
+       desc_A = A%matrix_map%get_descriptor()
+    Else
+       ctxt_A = -1
+       desc_A = -1
+    End If
+    If( Present( B ) ) Then
+       Call B%matrix_map%get_data( ctxt = ctxt_B, m = m, n = n )
+       desc_B = B%matrix_map%get_descriptor()
+    Else
+       ctxt_B = -1
+       desc_B = -1
+    End If
+
+    ! Call the redistribution routine supplying dummy arrays as required
+    If     (       Present( A ) .And.       Present( B ) ) Then
+       Call pdgemr2d( m, n, A%data, 1, 1, desc_A, B%data, 1, 1, desc_B, parent_ctxt )
+    Else If(       Present( A ) .And. .Not. Present( B ) ) Then
+       Call pdgemr2d( m, n, A%data, 1, 1, desc_A, dum_B , 1, 1, desc_B, parent_ctxt )
+    Else If( .Not. Present( A ) .And.       Present( B ) ) Then
+       Call pdgemr2d( m, n, dum_A , 1, 1, desc_A, B%data, 1, 1, desc_B, parent_ctxt )
+    Else If( .Not. Present( A ) .And. .Not. Present( B ) ) Then
+       ! Shouldn't get here due to error check above
+       Stop "In matrix_remap_data_real got to an impossible place!"
+    End If
+  End Subroutine matrix_remap_data_real
   
-!!$  Subroutine dummy( A )
-!!$    Class( distributed_matrix ), Intent( In ) :: A
-!!$    Stop "Should never get here"
-!!$    Write( *, * ) A%daggered
-!!$  End Subroutine dummy
-!!$  
-!!$  Logical Function dummy_f( A, rubbish )
-!!$    Class( distributed_matrix ), Intent( In ) :: A
-!!$    Integer                    , Intent( In ) :: rubbish
-!!$    Stop "Should never get here"
-!!$    dummy_f = A%daggered 
-!!$    Write( *, * ) rubbish
-!!$  End Function dummy_f
+  Subroutine matrix_remap_data_complex( parent_comm, A, B )
+
+    Integer                        ,           Intent( In    ) :: parent_comm
+    Type( complex_distributed_matrix ), Optional, Intent( In    ) :: A
+    Type( complex_distributed_matrix ), Optional, Intent( InOut ) :: B
+
+    Type( matrix_mapping ) :: mapping
+
+    Complex( wp ), Dimension( 1:1, 1:1 ) :: dum_a, dum_b
+
+    Integer, Dimension( 1:9 ) :: desc_A, desc_b
+    
+    Integer :: m, n
+    Integer :: parent_ctxt, ctxt_a, ctxt_b
+    
+    If( .Not. Present( A ) .And. .Not. Present( B ) ) Then
+       Stop "In matrix_remap_data_complex one of A or B must be supplied"
+    End If
+    
+    ! Generate a context fron the parent_communicator
+    Call matrix_mapping_init( parent_comm, mapping )
+    Call mapping%get_data( ctxt = parent_ctxt )
+
+    m = -1
+    n = -1
+    ! Get contexts and descriptors for the matrices
+    If( Present( A ) ) Then
+       Call A%matrix_map%get_data( ctxt = ctxt_A, m = m, n = n )
+       desc_A = A%matrix_map%get_descriptor()
+    Else
+       ctxt_A = -1
+       desc_A = -1
+    End If
+    If( Present( B ) ) Then
+       Call B%matrix_map%get_data( ctxt = ctxt_B, m = m, n = n )
+       desc_B = B%matrix_map%get_descriptor()
+    Else
+       ctxt_B = -1
+       desc_B = -1
+    End If
+
+    ! Call the redistribution routine supplying dummy arrays as required
+    If     (       Present( A ) .And.       Present( B ) ) Then
+       Call pzgemr2d( m, n, A%data, 1, 1, desc_A, B%data, 1, 1, desc_B, parent_ctxt )
+    Else If(       Present( A ) .And. .Not. Present( B ) ) Then
+       Call pzgemr2d( m, n, A%data, 1, 1, desc_A, dum_B , 1, 1, desc_B, parent_ctxt )
+    Else If( .Not. Present( A ) .And.       Present( B ) ) Then
+       Call pzgemr2d( m, n, dum_A , 1, 1, desc_A, B%data, 1, 1, desc_B, parent_ctxt )
+    Else If( .Not. Present( A ) .And. .Not. Present( B ) ) Then
+       ! Shouldn't get here due to error check above
+       Stop "In matrix_remap_data_complex got to an impossible place!"
+    End If
+  End Subroutine matrix_remap_data_complex
   
 End Module distributed_matrix_module
  

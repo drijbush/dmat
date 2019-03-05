@@ -6,6 +6,7 @@ Module proc_mapping_module
 
   Type, Public :: proc_mapping
      Character( Len = 128 ), Private   :: name
+     Integer               , Private   :: root_in_comm_world ! To allow disjoint sets of procs to talk to each other, need to implement
      Integer               , Private   :: communicator
      ! Probably should turn this into a proc_mapping - will do along the line
      Integer               , Private   :: parent_communicator

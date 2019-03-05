@@ -2,7 +2,6 @@ Module matrix_mapping_module
 
   Use numbers_module     , Only : wp
   Use mpi
-!!$  Use proc_mapping_module, Only : proc_mapping, proc_mapping_init, proc_mapping_finalise, proc_mapping_base, proc_mapping_base_start
   Use proc_mapping_module, Only : proc_mapping, proc_mapping_init, proc_mapping_finalise
   
   Implicit None
