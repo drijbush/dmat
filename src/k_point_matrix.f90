@@ -268,10 +268,11 @@ Contains
           ! Find out if I hold this in the split distribution
           this_ks = split_A%get_my_ks_index( ks )
           If( this_ks /= NOT_ME ) Then
-             Call matrix_redistribute( A%parent_communicator, A%my_k_points( ks )%data( 1 )%matrix, &
-                  split_A%my_k_points( this_ks )%data( 1 )%matrix )
+             ! Will rewrite a matricx remap function instead and revisit
+!!$             Call matrix_redistribute( A%parent_communicator, A%my_k_points( ks )%data( 1 )%matrix, &
+!!$                  split_A%my_k_points( this_ks )%data( 1 )%matrix )
           Else
-             Call matrix_redistribute( A%parent_communicator, A%my_k_points( ks )%data( 1 )%matrix )
+!!$             Call matrix_redistribute( A%parent_communicator, A%my_k_points( ks )%data( 1 )%matrix )
           End If
        End Do
     End If
