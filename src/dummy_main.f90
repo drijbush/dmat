@@ -808,7 +808,7 @@ Contains
     ! Assume ns=1 for moment
 
     Integer, Parameter :: ns = 1
-    Integer, Parameter :: nk = 5
+    Integer, Parameter :: nk = 2
 
     Type( ks_array ) :: A
     Type( ks_array ) :: Q
@@ -860,11 +860,16 @@ Contains
     Call ks_array_init( MPI_COMM_WORLD, base_k )
 
     Do k = 1, nk
-       k_points( :, k ) = [ k, 0, 0 ]
+       k_points( :, k ) = [ k - 1, 0, 0 ]
        Call Random_number( rand )
        k_types( k ) = Merge( K_POINT_REAL, K_POINT_COMPLEX, rand > 0.5_wp )
     End Do
     Call A%create( ns, k_types, k_points, n, n, base_k )
+    Call A%print_info( 200 )
+    Call A%split_ks( 2.0_wp, B, .False. )
+    Call B%print_info( 100 )
+    Call mpi_finalize( error )
+    Stop
     Do k = 1, nk
        If( k_types( k ) == K_POINT_REAL ) Then
           Call A%set_by_global( s, k_points( :, k ), 1, n, 1, n, A_global_r( :, :, k ) )

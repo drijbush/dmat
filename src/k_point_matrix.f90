@@ -46,6 +46,7 @@ Module k_point_matrix_module
      Procedure          :: create               => ks_array_create
      Procedure          :: split_ks             => ks_array_split_ks
      Procedure          :: diag                 => ks_array_diag
+     Procedure          :: print_info           => ks_array_print_info
      Procedure, Private :: get_all_ks_index
      Procedure, Private :: get_my_ks_index
      Procedure, Private :: get_ks
@@ -141,6 +142,68 @@ Contains
     
   End Subroutine ks_array_create
 
+  Subroutine ks_array_print_info( A, verbosity )
+
+    Use mpi
+
+    Class( ks_array     ), Intent( In ) :: A
+    Integer, Optional    , Intent( In ) :: verbosity
+
+    Integer, Dimension( : ), Allocatable :: this_comm_ranks
+    
+    Integer :: me, nproc
+    Integer :: error
+    Integer :: n_ks
+    Integer :: ks, my_ks
+
+    Call MPI_Comm_rank( A%parent_communicator, me   , error )
+    Call MPI_Comm_size( A%parent_communicator, nproc, error )
+
+    n_ks = Size( A%all_k_point_info )
+    
+    If( me == 0 ) Then
+       Write( *, * )
+       Write( *, '( a )' ) 'Information on a ks_array'
+       Write( *, '( a )' ) 'This ks array holds the following spins and k points'
+       Write( *, '( a, t10, a, t30, a )' ) 'Spin', 'Indices', 'Data Type'
+       Do ks = 1, n_ks
+          Write( *, '( i0, t10, "( ", i2, ", ", i2, ", ", i2, " )", t30, a )' )    &
+               A%all_k_point_info( ks )%spin, A%all_k_point_info( ks )%k_indices,   &
+               Merge( 'Real   ', 'Complex', A%all_k_point_info( ks )%k_type == K_POINT_REAL )
+       End Do
+    End If
+
+    ! Print Which procs hold which k point
+    If( Present( verbosity ) ) Then
+       If( verbosity > 99 ) Then
+          Allocate( this_comm_ranks( 0:nproc - 1 ) )
+          If( me == 0 ) Then
+             Write( *, '( a )' ) 'The ranks within the parent communicator map onto the k points as below:'
+          End If
+          ! For each k point in turn work out who owns it
+          Do ks = 1, n_ks
+             this_comm_ranks = 0
+             my_ks = A%get_my_ks_index( ks )
+             If( my_ks /= NOT_ME ) Then
+                this_comm_ranks( me ) = me + 1 ! Avoid problems when me == 0
+             End If
+             Call MPI_Allreduce( MPI_IN_PLACE, this_comm_ranks, Size( this_comm_ranks ), &
+                  MPI_INTEGER, MPI_SUM, A%parent_communicator, error )
+          If( me == 0 ) Then
+             Write( *, '( i0, t10, "( ", i2, ", ", i2, ", ", i2, " )", 3x, 99999( i0, 1x ) )' )    &
+                  A%all_k_point_info( ks )%spin, A%all_k_point_info( ks )%k_indices, &
+                  Pack( this_comm_ranks - 1, this_comm_ranks /= 0 )
+          End If
+          End Do
+          If( me == 0 ) Then
+             Write( *, * )
+          End If
+          Deallocate( this_comm_ranks )
+       End If
+    End If
+    
+  End Subroutine ks_array_print_info
+
   Subroutine ks_array_split_ks( A, complex_weight, split_A, redistribute )
 
     ! Split a ks_array A so the resulting ks_array is k point distributed
@@ -196,7 +259,7 @@ Contains
 
     !THIS WHOLE SPLITTING STRATEGY PROBABLY NEEDS MORE THOUGHT
     Call MPI_Comm_size( split_A%parent_communicator, n_procs_parent, error )
-    Call MPI_Comm_size( split_A%parent_communicator,      me_parent, error )
+    Call MPI_Comm_rank( split_A%parent_communicator,      me_parent, error )
     cost = Nint( Sum( weights ) )
     ! Scale up weights so fits inside the parent comm
     Allocate( n_procs_ks( 1:n_ks ) )
@@ -204,7 +267,7 @@ Contains
 
     ! Two possible cases
 
-    k_split_strategy: If( Sum( n_procs_ks )  <= n_procs_parent ) Then
+    k_split_strategy: If( cost <= n_procs_parent ) Then
        
        ! 1) There are sufficent processors for each k point to have its own, separate set if processors which work on it
        n_my_ks  = 1
@@ -232,13 +295,25 @@ Contains
 
     Else
 
-       ! Second strategy - too few procs to have 1 k point per communicator
-       !NEED TO WRITE THIS!!
+       ! 2) Not enough procs to make distibuting matrices wortwhile. Just use a simple
+       ! round robin assignment and do operations in serial
 
-       ! Purely to stop gfortran whingeing before I have implemnted this bit - remove once done
-       n_my_ks = 3
-       this_s = 2
-       this_k_indices = 4
+       ! First work out how many ks points I will hold
+       n_my_ks = n_ks / n_procs_parent
+       If( n_my_ks * n_procs_parent < n_ks ) Then
+          n_my_ks = n_my_ks + 1
+       End If
+       Allocate( my_ks( 1:n_my_ks ) )
+
+       ! Now assign them
+       this_ks = 0
+       Do ks = me_parent + 1, n_ks, n_procs_parent
+          this_ks = this_ks + 1
+          my_ks( this_ks ) = ks
+       End Do
+
+       ! And colour my communicators, an mpi_comm_split is next
+       my_colour = Merge( me_parent, MPI_UNDEFINED, me_parent < n_ks )
 
     End If k_split_strategy
 
