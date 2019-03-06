@@ -191,11 +191,11 @@ Contains
              End If
              Call MPI_Allreduce( MPI_IN_PLACE, this_comm_ranks, Size( this_comm_ranks ), &
                   MPI_INTEGER, MPI_SUM, A%parent_communicator, error )
-          If( me == 0 ) Then
-             Write( *, '( i0, t10, "( ", i2, ", ", i2, ", ", i2, " )", 3x, 99999( i0, 1x ) )' )    &
-                  A%all_k_point_info( ks )%spin, A%all_k_point_info( ks )%k_indices, &
-                  Pack( this_comm_ranks - 1, this_comm_ranks /= 0 )
-          End If
+             If( me == 0 ) Then
+                Write( *, '( i0, t10, "( ", i2, ", ", i2, ", ", i2, " )", 3x, 99999( i0, 1x ) )' )    &
+                     A%all_k_point_info( ks )%spin, A%all_k_point_info( ks )%k_indices, &
+                     Pack( this_comm_ranks - 1, this_comm_ranks /= 0 )
+             End If
           End Do
           If( me == 0 ) Then
              Write( *, * )
