@@ -1538,9 +1538,9 @@ Contains
 
   Subroutine matrix_remap_data_real( parent_comm, A, B )
 
-    Integer                        ,           Intent( In    ) :: parent_comm
-    Type( real_distributed_matrix ), Optional, Intent( In    ) :: A
-    Type( real_distributed_matrix ), Optional, Intent( InOut ) :: B
+    Integer                        ,              Intent( In    ) :: parent_comm
+    Type( real_distributed_matrix ), Allocatable, Intent( In    ) :: A
+    Type( real_distributed_matrix ), Allocatable, Intent( InOut ) :: B
 
     Type( matrix_mapping ) :: mapping
 
@@ -1549,9 +1549,16 @@ Contains
     Integer, Dimension( 1:9 ) :: desc_A, desc_b
     
     Integer :: m, n
-    Integer :: parent_ctxt, ctxt_a, ctxt_b
+    Integer :: m_A, n_A
+    Integer :: m_B, n_B
+    Integer :: parent_ctxt
+
+    Logical :: p_A, p_B
+
+    p_A = Allocated( A )
+    p_B = Allocated( B )
     
-    If( .Not. Present( A ) .And. .Not. Present( B ) ) Then
+    If( .Not. p_A .And. .Not. p_B ) Then
        Stop "In matrix_remap_data_real one of A or B must be supplied"
     End If
     
@@ -1561,40 +1568,55 @@ Contains
 
     m = -1
     n = -1
-    ! Get contexts and descriptors for the matrices
-    If( Present( A ) ) Then
-       Call A%matrix_map%get_data( ctxt = ctxt_A, m = m, n = n )
+    ! Get sizes and descriptors for the matrices
+    ! The redistrib routine use -1 to indicate no data on this process
+    If( p_A ) Then
+       Call A%matrix_map%get_data( m = m, n = n )
        desc_A = A%matrix_map%get_descriptor()
     Else
-       ctxt_A = -1
+       m_A    = -1
+       n_A    = -1
        desc_A = -1
     End If
-    If( Present( B ) ) Then
-       Call B%matrix_map%get_data( ctxt = ctxt_B, m = m, n = n )
+    
+    If( p_B ) Then
+       Call B%matrix_map%get_data( m = m, n = n )
        desc_B = B%matrix_map%get_descriptor()
     Else
-       ctxt_B = -1
+       m_B    = -1
+       n_B    = -1
        desc_B = -1
     End If
 
+    If( m_A /= -1 .And. n_A /= -1 .And. m_B /= -1 .And. n_B /= - 1 ) Then
+       If( m_A /= m_B .Or. n_A /= n_B ) Then
+          Stop "Inconsistent matrix sizes in matrix_remap_data_real"
+       End If
+    End If
+
     ! Call the redistribution routine supplying dummy arrays as required
-    If     (       Present( A ) .And.       Present( B ) ) Then
+    If     (       p_A .And.       p_B ) Then
        Call pdgemr2d( m, n, A%data, 1, 1, desc_A, B%data, 1, 1, desc_B, parent_ctxt )
-    Else If(       Present( A ) .And. .Not. Present( B ) ) Then
+
+    Else If(       p_A .And. .Not. p_B ) Then
        Call pdgemr2d( m, n, A%data, 1, 1, desc_A, dum_B , 1, 1, desc_B, parent_ctxt )
-    Else If( .Not. Present( A ) .And.       Present( B ) ) Then
+
+    Else If( .Not. p_A .And.       p_B ) Then
        Call pdgemr2d( m, n, dum_A , 1, 1, desc_A, B%data, 1, 1, desc_B, parent_ctxt )
-    Else If( .Not. Present( A ) .And. .Not. Present( B ) ) Then
+
+    Else If( .Not. p_A .And. .Not. p_B ) Then
        ! Shouldn't get here due to error check above
        Stop "In matrix_remap_data_real got to an impossible place!"
+
     End If
+
   End Subroutine matrix_remap_data_real
   
   Subroutine matrix_remap_data_complex( parent_comm, A, B )
 
-    Integer                        ,           Intent( In    ) :: parent_comm
-    Type( complex_distributed_matrix ), Optional, Intent( In    ) :: A
-    Type( complex_distributed_matrix ), Optional, Intent( InOut ) :: B
+    Integer                           ,              Intent( In    ) :: parent_comm
+    Type( complex_distributed_matrix ), Allocatable, Intent( In    ) :: A
+    Type( complex_distributed_matrix ), Allocatable, Intent( InOut ) :: B
 
     Type( matrix_mapping ) :: mapping
 
@@ -1603,9 +1625,16 @@ Contains
     Integer, Dimension( 1:9 ) :: desc_A, desc_b
     
     Integer :: m, n
-    Integer :: parent_ctxt, ctxt_a, ctxt_b
+    Integer :: m_A, n_A
+    Integer :: m_B, n_B
+    Integer :: parent_ctxt
+
+    Logical :: p_A, p_B
+
+    p_A = Allocated( A )
+    p_B = Allocated( B )
     
-    If( .Not. Present( A ) .And. .Not. Present( B ) ) Then
+    If( .Not. p_A .And. .Not. p_B ) Then
        Stop "In matrix_remap_data_complex one of A or B must be supplied"
     End If
     
@@ -1615,33 +1644,48 @@ Contains
 
     m = -1
     n = -1
-    ! Get contexts and descriptors for the matrices
-    If( Present( A ) ) Then
-       Call A%matrix_map%get_data( ctxt = ctxt_A, m = m, n = n )
+    ! Get sizes and descriptors for the matrices
+    ! The redistrib routine use -1 to indicate no data on this process
+    If( p_A ) Then
+       Call A%matrix_map%get_data( m = m, n = n )
        desc_A = A%matrix_map%get_descriptor()
     Else
-       ctxt_A = -1
+       m_A    = -1
+       n_A    = -1
        desc_A = -1
     End If
-    If( Present( B ) ) Then
-       Call B%matrix_map%get_data( ctxt = ctxt_B, m = m, n = n )
+    
+    If( p_B ) Then
+       Call B%matrix_map%get_data( m = m, n = n )
        desc_B = B%matrix_map%get_descriptor()
     Else
-       ctxt_B = -1
+       m_B    = -1
+       n_B    = -1
        desc_B = -1
     End If
 
+    If( m_A /= -1 .And. n_A /= -1 .And. m_B /= -1 .And. n_B /= - 1 ) Then
+       If( m_A /= m_B .Or. n_A /= n_B ) Then
+          Stop "Inconsistent matrix sizes in matrix_remap_data_complex"
+       End If
+    End If
+
     ! Call the redistribution routine supplying dummy arrays as required
-    If     (       Present( A ) .And.       Present( B ) ) Then
+    If     (       p_A .And.       p_B ) Then
        Call pzgemr2d( m, n, A%data, 1, 1, desc_A, B%data, 1, 1, desc_B, parent_ctxt )
-    Else If(       Present( A ) .And. .Not. Present( B ) ) Then
+
+    Else If(       p_A .And. .Not. p_B ) Then
        Call pzgemr2d( m, n, A%data, 1, 1, desc_A, dum_B , 1, 1, desc_B, parent_ctxt )
-    Else If( .Not. Present( A ) .And.       Present( B ) ) Then
+
+    Else If( .Not. p_A .And.       p_B ) Then
        Call pzgemr2d( m, n, dum_A , 1, 1, desc_A, B%data, 1, 1, desc_B, parent_ctxt )
-    Else If( .Not. Present( A ) .And. .Not. Present( B ) ) Then
+
+    Else If( .Not. p_A .And. .Not. p_B ) Then
        ! Shouldn't get here due to error check above
        Stop "In matrix_remap_data_complex got to an impossible place!"
+
     End If
+
   End Subroutine matrix_remap_data_complex
   
 End Module distributed_matrix_module

@@ -2,9 +2,9 @@ Module distributed_k_module
 
   ! Wrapper for dist matrix types so can make opaque array - only 1 k point at this level
 
-  Use numbers_module       , Only : wp
+  Use numbers_module           , Only : wp
   Use distributed_matrix_module, Only : distributed_matrix, real_distributed_matrix, complex_distributed_matrix, &
-       distributed_matrix_init, distributed_matrix_finalise
+       distributed_matrix_init, distributed_matrix_finalise, distributed_matrix_remap_data
   Implicit None
 
   Type, Private :: k_point_matrix
@@ -71,6 +71,7 @@ Module distributed_k_module
 
   Public :: distributed_k_matrix_init
   Public :: distributed_k_matrix_finalise
+  Public :: distributed_k_matrix_remap_data
   
   Private
 
@@ -1015,6 +1016,92 @@ Contains
     End Associate
 
   End Function distributed_k_matrix_pre_add_diag
+
+  Subroutine distributed_k_matrix_remap_data( parent_comm, A, B )
+
+    ! Horrible routine to remap the data part of the matrix
+    ! Horrible becuase we know nothing about overlap of the two sets of processors
+    ! which hold the matrices.
+    ! Parent_comm is a communicator holding the union of processes that hold A and will hold B
+    ! A is the matrix from which we are remapping
+    ! B is the matrix to which we are remapping
+    ! There is a horrible complication that not all processes required to call this neccessarily hold
+    ! any part of A or B - thy may hold only one (and the routine requires they hold at least parts of
+    ! one). To indicate A this process does not hold part of the matrix the actual argument
+    ! should be in a deallocated state
+
+    ! NOTE THIS DOES NO MATRIX SETTING UP - all that happens is the data in the matrix is redistributed
+    
+    Integer                     ,              Intent( In    ) :: parent_comm
+    Type( distributed_k_matrix ), Allocatable, Intent( In    ) :: A
+    Type( distributed_k_matrix ), Allocatable, Intent( InOut ) :: B
+
+    Type(    real_distributed_matrix ), Allocatable :: A_mat_real   , B_mat_real
+    Type( complex_distributed_matrix ), Allocatable :: A_mat_complex, B_mat_complex
+
+    Logical :: is_real
+    Logical :: p_A, p_B
+
+    p_A = Allocated( A )
+    p_B = Allocated( B )
+    
+    If( .Not. p_A .And. .Not. p_B ) Then
+       Stop "In distributed_k_matrix_remap_data_complex one of A or B must be supplied"
+    End If
+
+    If( p_A .And. p_B ) Then
+       If( .Not. same_type_as( A%k_point%matrix, B%k_point%matrix ) ) Then
+          Stop "Type mismatch in distributed_k_matrix_remap_data"
+       End If
+    End If
+
+    If( p_A ) Then
+       Associate( Akm => A%k_point%matrix )
+         Select Type( Akm )
+         Class Default
+            Stop "Illegal type in distributed_k_matrix_remap_data"
+         Type is ( real_distributed_matrix )
+            Allocate( A_mat_real, Source = Akm ) 
+         Type is ( complex_distributed_matrix )
+            Allocate( A_mat_complex, Source = Akm )
+         End Select
+       End Associate
+    End If
+
+    If( p_B ) Then
+       Associate( Bkm => B%k_point%matrix )
+         Select Type( Bkm )
+         Class Default
+            Stop "Illegal type in distributed_k_matrix_remap_data"
+         Type is ( real_distributed_matrix )
+            Allocate( B_mat_real, Source = Bkm ) 
+         Type is ( complex_distributed_matrix )
+            Allocate( B_mat_complex, Source = Bkm )
+         End Select
+       End Associate
+    End If
+
+    ! Now we know
+    ! 1) If there is both A and B they are of the same type
+    ! 2) At least one of them is allocated
+    ! Thus can work out easily what typ we are dealing with
+    is_real = Allocated( A_mat_real ) .Or. Allocated( B_mat_real )
+
+    If( is_real ) Then
+       Call distributed_matrix_remap_data( parent_comm, A_mat_real, B_mat_real )
+       If( p_B ) Then
+          Deallocate( B%k_point%matrix )
+          Allocate  ( B%k_point%matrix, Source = B_mat_real )
+       End If
+    Else
+       Call distributed_matrix_remap_data( parent_comm, A_mat_complex, B_mat_complex )
+       If( p_B ) Then
+          Deallocate( B%k_point%matrix )
+          Allocate  ( B%k_point%matrix, Source = B_mat_complex )
+       End If
+    End If
+       
+  End Subroutine distributed_k_matrix_remap_data
 
   Subroutine distributed_k_matrix_set_to_identity( A )
     

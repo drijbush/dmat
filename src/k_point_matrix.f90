@@ -6,7 +6,7 @@ Module k_point_matrix_module
   
   Use numbers_module      , Only : wp
   Use distributed_k_module, Only : distributed_k_matrix_init, &
-       distributed_k_matrix_finalise, distributed_k_matrix
+       distributed_k_matrix_finalise, distributed_k_matrix_remap_data, distributed_k_matrix
 
   Implicit None
 
@@ -44,7 +44,7 @@ Module k_point_matrix_module
      Integer                                           :: parent_communicator = INVALID
    Contains
      Procedure          :: create               => ks_array_create
-     Procedure          :: split_k              => ks_array_split_ks
+     Procedure          :: split_ks             => ks_array_split_ks
      Procedure          :: diag                 => ks_array_diag
      Procedure, Private :: get_all_ks_index
      Procedure, Private :: get_my_ks_index
@@ -152,6 +152,9 @@ Contains
     Type ( ks_array     ), Intent(   Out ) :: split_A
     Logical, Optional    , Intent( In    ) :: redistribute
 
+    Type( distributed_k_matrix ), Allocatable :: this_ks_matrix
+    Type( distributed_k_matrix ), Allocatable :: split_ks_matrix
+
     Type( distributed_k_matrix ) :: base_matrix
 
     Real( wp ), Dimension( : ), Allocatable :: weights
@@ -191,14 +194,16 @@ Contains
        weights( ks ) = Merge( 1.0_wp, complex_weight, split_A%all_k_point_info( ks )%k_type == K_POINT_REAL )
     End Do
 
-     !THIS WHOLE SPLITTING STRATEGY PROBABLY NEEDS MORE THOUGHT
-    ! Two possible cases
+    !THIS WHOLE SPLITTING STRATEGY PROBABLY NEEDS MORE THOUGHT
     Call MPI_Comm_size( split_A%parent_communicator, n_procs_parent, error )
     Call MPI_Comm_size( split_A%parent_communicator,      me_parent, error )
     cost = Nint( Sum( weights ) )
     ! Scale up weights so fits inside the parent comm
     Allocate( n_procs_ks( 1:n_ks ) )
     n_procs_ks = Nint( weights * ( n_procs_parent / cost ) )
+
+    ! Two possible cases
+
     k_split_strategy: If( Sum( n_procs_ks )  <= n_procs_parent ) Then
        
        ! 1) There are sufficent processors for each k point to have its own, separate set if processors which work on it
@@ -216,11 +221,11 @@ Contains
           Do ks = 1, n_ks
              top_rank = top_rank + n_procs_ks( ks )
              If( me_parent < top_rank ) Then
-                Exit
-                ! Colur for comm spliting
+                ! Colour for comm spliting
                 my_colour = ks
                 ! As in this strategy we only have 1 k point store which one it is
                 my_ks( 1 ) = ks
+                Exit
              End If
           End Do
        End If
@@ -248,11 +253,11 @@ Contains
        ! Irreps not split yet hence no split at this level
        Allocate( split_A%my_k_points( ks )%data( 1:1 ) )
        split_A%my_k_points( ks )%data( 1 )%label = 1
-       ! Now need to generate a source matrix from the communicator - precisely what the init routine does!!
-       Call distributed_k_matrix_init( k_comm, base_matrix )
        this_k_type    = split_A%all_k_point_info( my_ks( ks ) )%k_type
        this_s         = split_A%all_k_point_info( my_ks( ks ) )%spin
        this_k_indices = split_A%all_k_point_info( my_ks( ks ) )%k_indices
+       ! Now need to generate a source matrix from the communicator - precisely what the init routine does!!
+       Call distributed_k_matrix_init( k_comm, base_matrix )
        ! Need to get sizes for creation
        m = A%my_k_points( my_ks( ks ) )%data( 1 )%matrix%size( 1 )
        n = A%my_k_points( my_ks( ks ) )%data( 1 )%matrix%size( 2 )
@@ -261,20 +266,27 @@ Contains
        split_A%my_k_points( ks )%communicator = base_matrix%get_comm()
     End Do
 
-    ! Finally if required redistribute the data from the all distribution into the split distribution
+    ! Finally if required redistribute the data from the all procs distribution into the split distribution
+    ! Note all procs in parent comm must be involved as all hold data for the unsplit matrx
     If( loc_redist ) Then
-       ! All procs in parent comm must be involved as all hold data for the unsplit matrx
+       Allocate( this_ks_matrix )
        Do ks = 1, n_ks
+          this_ks_matrix = A%my_k_points( ks )%data( 1 )%matrix
           ! Find out if I hold this in the split distribution
+          ! Note indicate to the remap routine that we hod no data by having an unallocated array
+          ! c.f. Null pointer in C type languages
           this_ks = split_A%get_my_ks_index( ks )
           If( this_ks /= NOT_ME ) Then
-             ! Will rewrite a matricx remap function instead and revisit
-!!$             Call matrix_redistribute( A%parent_communicator, A%my_k_points( ks )%data( 1 )%matrix, &
-!!$                  split_A%my_k_points( this_ks )%data( 1 )%matrix )
-          Else
-!!$             Call matrix_redistribute( A%parent_communicator, A%my_k_points( ks )%data( 1 )%matrix )
+             Allocate( split_ks_matrix )
+             split_ks_matrix = split_A%my_k_points( this_ks )%data( 1 )%matrix
+          End If
+          Call distributed_k_matrix_remap_data( A%parent_communicator, this_ks_matrix, split_ks_matrix )
+          If( this_ks /= NOT_ME ) Then
+             split_A%my_k_points( this_ks )%data( 1 )%matrix = split_ks_matrix
+             Deallocate( split_ks_matrix ) ! Important as an deallocated matrix indicates no data on this process in the remap routine
           End If
        End Do
+       Deallocate( this_ks_matrix )
     End If
 
   End Subroutine ks_array_split_ks
