@@ -181,7 +181,7 @@ Contains
     Associate( Ak => A%k_point )
       Select Type( Ak )
       Class Default
-         Stop "Illegal type in distributed_k_matrix_diag"
+         Stop "Illegal type in distributed_k_matrix_dagger"
       Type is ( k_point_matrix )
          Allocate( k_point_matrix :: tA%k_point )
       Type is ( k_wave_function )
@@ -195,7 +195,7 @@ Contains
     Associate( Akm => A%k_point%matrix )
       Select Type( Akm )
       Class Default
-         Stop "Illegal type in distributed_k_matrix_diag"
+         Stop "Illegal type in distributed_k_matrix_dagger"
       Type is ( real_distributed_matrix )
          tA_real = .Dagger. Akm
          Allocate( tA%k_point%matrix, Source = tA_real )
@@ -221,7 +221,7 @@ Contains
     Associate( Ak => A%k_point )
       Select Type( Ak )
       Class Default
-         Stop "Illegal type in distributed_k_matrix_diag"
+         Stop "Illegal type in distributed_k_matrix_Choleski"
       Type is ( k_point_matrix )
          Allocate( k_point_matrix :: C%k_point )
       Type is ( k_wave_function )
@@ -235,7 +235,7 @@ Contains
     Associate( Akm => A%k_point%matrix )
       Select Type( Akm )
       Class Default
-         Stop "Illegal type in distributed_k_matrix_diag"
+         Stop "Illegal type in distributed_k_matrix_Choleski"
       Type is ( real_distributed_matrix )
          C_real = Akm%Choleski()
          Allocate( C%k_point%matrix, Source = C_real )
@@ -262,7 +262,7 @@ Contains
     Associate( Ak => A%k_point )
       Select Type( Ak )
       Class Default
-         Stop "Illegal type in distributed_k_matrix_diag"
+         Stop "Illegal type in distributed_k_matrix_mult"
       Type is ( k_point_matrix )
          Allocate( k_point_matrix :: C%k_point )
       Type is ( k_wave_function )
@@ -277,14 +277,14 @@ Contains
       Select Type( Akm )
 
       Class Default
-         Stop "Illegal type in distributed_k_matrix_diag"
+         Stop "Illegal type in distributed_k_matrix_mult"
          
       Type is ( real_distributed_matrix )
          
          Associate( Bkm => B%k_point%matrix )
            Select Type( Bkm )
            Class Default
-              Stop "Illegal type in distributed_k_matrix_diag"
+              Stop "Illegal type in distributed_k_matrix_mult"
            Type is ( real_distributed_matrix )
               C_real = Akm * Bkm
               Allocate( C%k_point%matrix, Source = C_real )
@@ -295,7 +295,7 @@ Contains
          Associate( Bkm => B%k_point%matrix )
            Select Type( Bkm )
            Class Default
-              Stop "Illegal type in distributed_k_matrix_diag"
+              Stop "Illegal type in distributed_k_matrix_mult"
            Type is ( complex_distributed_matrix )
               C_complex = Akm * Bkm
               Allocate( C%k_point%matrix, Source = C_complex )
@@ -321,7 +321,7 @@ Contains
     Associate( Ak => A%k_point )
       Select Type( Ak )
       Class Default
-         Stop "Illegal type in distributed_k_matrix_post_scale"
+         Stop "Illegal type in distributed_k_matrix_post_mult_diag"
       Type is ( k_point_matrix )
          Allocate( k_point_matrix :: B%k_point )
       Type is ( k_wave_function )
@@ -335,7 +335,7 @@ Contains
     Associate( Akm => A%k_point%matrix )
       Select Type( Akm )
       Class Default
-         Stop "Illegal type in distributed_k_matrix_post_scale"
+         Stop "Illegal type in distributed_k_matrix_post_mult_diag"
       Type is ( real_distributed_matrix )
          B_real = Akm * d
          Allocate( B%k_point%matrix, Source = B_real )
@@ -361,7 +361,7 @@ Contains
     Associate( Ak => A%k_point )
       Select Type( Ak )
       Class Default
-         Stop "Illegal type in distributed_k_matrix_pre_scale"
+         Stop "Illegal type in distributed_k_matrix_pre_mult_diag"
       Type is ( k_point_matrix )
          Allocate( k_point_matrix :: B%k_point )
       Type is ( k_wave_function )
@@ -375,7 +375,7 @@ Contains
     Associate( Akm => A%k_point%matrix )
       Select Type( Akm )
       Class Default
-         Stop "Illegal type in distributed_k_matrix_pre_scale"
+         Stop "Illegal type in distributed_k_matrix_pre_mult_diag"
       Type is ( real_distributed_matrix )
          B_real = d * Akm 
          Allocate( B%k_point%matrix, Source = B_real )
@@ -401,7 +401,7 @@ Contains
     Associate( Ak => A%k_point )
       Select Type( Ak )
       Class Default
-         Stop "Illegal type in distributed_k_matrix_diag"
+         Stop "Illegal type in distributed_k_matrix_solve"
       Type is ( k_point_matrix )
          Allocate( k_point_matrix :: C%k_point )
       Type is ( k_wave_function )
@@ -416,14 +416,14 @@ Contains
       Select Type( Akm )
 
       Class Default
-         Stop "Illegal type in distributed_k_matrix_diag"
+         Stop "Illegal type in distributed_k_matrix_solve"
          
       Type is ( real_distributed_matrix )
          
          Associate( Bkm => B%k_point%matrix )
            Select Type( Bkm )
            Class Default
-              Stop "Illegal type in distributed_k_matrix_diag"
+              Stop "Illegal type in distributed_k_matrix_solve"
            Type is ( real_distributed_matrix )
               C_real = Akm%solve( Bkm )
               Allocate( C%k_point%matrix, Source = C_real )
@@ -434,7 +434,7 @@ Contains
          Associate( Bkm => B%k_point%matrix )
            Select Type( Bkm )
            Class Default
-              Stop "Illegal type in distributed_k_matrix_diag"
+              Stop "Illegal type in distributed_k_matrix_solve"
            Type is ( complex_distributed_matrix )
               C_complex = Akm%solve( Bkm )
               Allocate( C%k_point%matrix, Source = C_complex )
@@ -460,7 +460,7 @@ Contains
     Associate( Ak => A%k_point )
       Select Type( Ak )
       Class Default
-         Stop "Illegal type in distributed_k_matrix_diag"
+         Stop "Illegal type in distributed_k_matrix_add"
       Type is ( k_point_matrix )
          Allocate( k_point_matrix :: C%k_point )
       Type is ( k_wave_function )
@@ -475,14 +475,14 @@ Contains
       Select Type( Akm )
 
       Class Default
-         Stop "Illegal type in distributed_k_matrix_diag"
+         Stop "Illegal type in distributed_k_matrix_add"
          
       Type is ( real_distributed_matrix )
          
          Associate( Bkm => B%k_point%matrix )
            Select Type( Bkm )
            Class Default
-              Stop "Illegal type in distributed_k_matrix_diag"
+              Stop "Illegal type in distributed_k_matrix_add"
            Type is ( real_distributed_matrix )
               C_real = Akm + Bkm
               Allocate( C%k_point%matrix, Source = C_real )
@@ -493,7 +493,7 @@ Contains
          Associate( Bkm => B%k_point%matrix )
            Select Type( Bkm )
            Class Default
-              Stop "Illegal type in distributed_k_matrix_diag"
+              Stop "Illegal type in distributed_k_matrix_add"
            Type is ( complex_distributed_matrix )
               C_complex = Akm + Bkm
               Allocate( C%k_point%matrix, Source = C_complex )
@@ -519,7 +519,7 @@ Contains
     Associate( Ak => A%k_point )
       Select Type( Ak )
       Class Default
-         Stop "Illegal type in distributed_k_matrix_diag"
+         Stop "Illegal type in distributed_k_matrix_subtract"
       Type is ( k_point_matrix )
          Allocate( k_point_matrix :: C%k_point )
       Type is ( k_wave_function )
@@ -534,14 +534,14 @@ Contains
       Select Type( Akm )
 
       Class Default
-         Stop "Illegal type in distributed_k_matrix_diag"
+         Stop "Illegal type in distributed_k_matrix_subtract"
          
       Type is ( real_distributed_matrix )
          
          Associate( Bkm => B%k_point%matrix )
            Select Type( Bkm )
            Class Default
-              Stop "Illegal type in distributed_k_matrix_diag"
+              Stop "Illegal type in distributed_k_matrix_subtract"
            Type is ( real_distributed_matrix )
               C_real = Akm - Bkm
               Allocate( C%k_point%matrix, Source = C_real )
@@ -552,7 +552,7 @@ Contains
          Associate( Bkm => B%k_point%matrix )
            Select Type( Bkm )
            Class Default
-              Stop "Illegal type in distributed_k_matrix_diag"
+              Stop "Illegal type in distributed_k_matrix_subtract"
            Type is ( complex_distributed_matrix )
               C_complex = Akm - Bkm
               Allocate( C%k_point%matrix, Source = C_complex )
@@ -618,7 +618,7 @@ Contains
       Select Type( Akm )
 
       Class Default
-         Stop "Illegal type in distributed_k_matrix_diag"
+         Stop "Illegal type in set_global_real"
          
       Type is ( real_distributed_matrix )
          Call Akm%set_by_global( m, n, p, q, data )
@@ -643,7 +643,7 @@ Contains
       Select Type( Akm )
 
       Class Default
-         Stop "Illegal type in distributed_k_matrix_diag"
+         Stop "Illegal type in set_global_complex"
          
       Type is ( complex_distributed_matrix )
          Call Akm%set_by_global( m, n, p, q, data )
@@ -668,7 +668,7 @@ Contains
       Select Type( Akm )
 
       Class Default
-         Stop "Illegal type in distributed_k_matrix_diag"
+         Stop "Illegal type in set_local_real"
          
       Type is ( real_distributed_matrix )
          Call Akm%set_by_local( m, n, p, q, data )
@@ -693,7 +693,7 @@ Contains
       Select Type( Akm )
 
       Class Default
-         Stop "Illegal type in distributed_k_matrix_diag"
+         Stop "Illegal type in set_local_complex"
          
       Type is ( complex_distributed_matrix )
          Call Akm%set_by_local( m, n, p, q, data )
@@ -718,7 +718,7 @@ Contains
       Select Type( Akm )
 
       Class Default
-         Stop "Illegal type in distributed_k_matrix_diag"
+         Stop "Illegal type in get_global_real"
          
       Type is ( real_distributed_matrix )
          Call Akm%get_by_global( m, n, p, q, data )
@@ -743,7 +743,7 @@ Contains
       Select Type( Akm )
 
       Class Default
-         Stop "Illegal type in distributed_k_matrix_diag"
+         Stop "Illegal type in get_global_complex"
          
       Type is ( complex_distributed_matrix )
          Call Akm%get_by_global( m, n, p, q, data )
@@ -768,7 +768,7 @@ Contains
       Select Type( Akm )
 
       Class Default
-         Stop "Illegal type in distributed_k_matrix_diag"
+         Stop "Illegal type in get_local_real"
          
       Type is ( real_distributed_matrix )
          Call Akm%get_by_local( m, n, p, q, data )
@@ -793,7 +793,7 @@ Contains
       Select Type( Akm )
 
       Class Default
-         Stop "Illegal type in distributed_k_matrix_diag"
+         Stop "Illegal type in get_local_complex"
          
       Type is ( complex_distributed_matrix )
          Call Akm%get_by_local( m, n, p, q, data )
@@ -951,7 +951,7 @@ Contains
     Associate( Ak => A%k_point )
       Select Type( Ak )
       Class Default
-         Stop "Illegal type in distributed_k_matrix_post_scale"
+         Stop "Illegal type in distributed_k_matrix_post_add_diag"
       Type is ( k_point_matrix )
          Allocate( k_point_matrix :: B%k_point )
       Type is ( k_wave_function )
@@ -965,7 +965,7 @@ Contains
     Associate( Akm => A%k_point%matrix )
       Select Type( Akm )
       Class Default
-         Stop "Illegal type in distributed_k_matrix_post_scale"
+         Stop "Illegal type in distributed_k_matrix_post_add_diag"
       Type is ( real_distributed_matrix )
          B_real = Akm + d
          Allocate( B%k_point%matrix, Source = B_real )
@@ -991,7 +991,7 @@ Contains
     Associate( Ak => A%k_point )
       Select Type( Ak )
       Class Default
-         Stop "Illegal type in distributed_k_matrix_pre_scale"
+         Stop "Illegal type in distributed_k_matrix_pre_add_diag"
       Type is ( k_point_matrix )
          Allocate( k_point_matrix :: B%k_point )
       Type is ( k_wave_function )
@@ -1005,7 +1005,7 @@ Contains
     Associate( Akm => A%k_point%matrix )
       Select Type( Akm )
       Class Default
-         Stop "Illegal type in distributed_k_matrix_pre_scale"
+         Stop "Illegal type in distributed_k_matrix_pre_add_diag"
       Type is ( real_distributed_matrix )
          B_real = Akm + d
          Allocate( B%k_point%matrix, Source = B_real )
@@ -1110,7 +1110,7 @@ Contains
     Associate( Akm => A%k_point%matrix )
       Select Type( Akm )
       Class Default
-         Stop "Illegal type in distributed_k_matrix_pre_scale"
+         Stop "Illegal type in distributed_k_matrix_set_to_identity"
       Type is ( real_distributed_matrix )
          Call Akm%set_to_identity()
       Type is ( complex_distributed_matrix )

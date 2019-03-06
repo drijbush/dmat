@@ -63,6 +63,8 @@ Module k_point_matrix_module
   End type ks_array
   
   Type, Public :: eval_storage
+     Integer                                 :: spin
+     Integer   , Dimension( : ), Allocatable :: k_indices
      Real( wp ), Dimension( : ), Allocatable :: evals
   End type eval_storage
 
@@ -380,7 +382,6 @@ Contains
     
     Integer :: me, me_parent
     Integer :: ks_root, nb
-    Integer :: comm_compare
     Integer :: error
     Integer :: request
     Integer :: rsize, handle
@@ -398,6 +399,8 @@ Contains
           ks = A%get_all_ks_index( my_ks )
           Associate( Aks => A%my_k_points( my_ks )%data( my_irrep )%matrix, &
                      Qks => Q%my_k_points( my_ks )%data( my_irrep )%matrix )
+            E( ks )%spin      = A%all_k_point_info( ks )%spin
+            E( ks )%k_indices = A%all_k_point_info( ks )%k_indices
             Call Aks%diag( Qks, E( ks )%evals )
           End Associate
        End Do
@@ -408,41 +411,36 @@ Contains
     Call mpi_comm_rank( A%parent_communicator, me_parent, error )
     Do ks = 1, Size( A%all_k_point_info )
        my_ks = A%get_my_ks_index( ks )
-       ! Only need to replicate if the diag was done in a communicator containg a different set of
-       ! processes from the parent communicator 
-       Call MPI_Comm_compare( A%parent_communicator, A%my_k_points( my_ks )%communicator, comm_compare, error )
-       If( comm_compare == MPI_UNEQUAL ) Then
-          ! Work out who holds this set of evals and send how many there are
-          ! the root node of the communicator holding them back to the root node of the parent communicator
-          sending_data = .False.
-          If( my_ks /= NOT_ME ) Then
-             Call mpi_comm_rank( A%my_k_points( my_ks )%communicator, me, error )
-             sending_data = me == 0
-             If( sending_data ) then
-                buff_send( 1 ) = me
-                buff_send( 2 ) = Size( E( ks )%evals )
-                Call mpi_isend( buff_send, 2, MPI_INTEGER, 0, 10, A%parent_communicator, request, error )
-             End If
+       ! Work out who holds this set of evals and send how many there are
+       ! the root node of the communicator holding them back to the root node of the parent communicator
+       sending_data = .False.
+       If( my_ks /= NOT_ME ) Then
+          Call mpi_comm_rank( A%my_k_points( my_ks )%communicator, me, error )
+          sending_data = me == 0
+          If( sending_data ) then
+             buff_send( 1 ) = me_parent
+             buff_send( 2 ) = Size( E( ks )%evals )
+             Call mpi_isend( buff_send, 2, MPI_INTEGER, 0, ks, A%parent_communicator, request, error )
           End If
-          If( me_parent == 0 ) Then
-             Call mpi_recv( buff_recv, 2, MPI_INTEGER, MPI_ANY_SOURCE, 10, A%parent_communicator, MPI_STATUS_IGNORE, error )
-          End If
-          If( sending_data ) Then
-             Call mpi_wait( request, MPI_STATUS_IGNORE, error )
-          End If
-          ! Now on root of parent bcast back to all
-          Call mpi_bcast( buff_recv, 2, MPI_INTEGER, 0, A%parent_communicator, error )
-          ks_root = buff_recv( 1 )
-          nb      = buff_recv( 2 )
-          ! Now know how many evals we will recv - allocate memory if haven't done so already
-          If( .Not. Allocated( E( ks )%evals ) ) Then
-             Allocate( E( ks )%evals( 1:nb ) )
-          End If
-          ! And finally bcast out the values from the root node for this set of evals
-          Call mpi_sizeof( rdum, rsize, error )
-          Call mpi_type_match_size( MPI_TYPECLASS_REAL, rsize, handle, error )
-          Call mpi_bcast( E( ks )%evals, nb, handle, ks_root, A%parent_communicator, error )
        End If
+       If( me_parent == 0 ) Then
+          Call mpi_recv( buff_recv, 2, MPI_INTEGER, MPI_ANY_SOURCE, ks, A%parent_communicator, MPI_STATUS_IGNORE, error )
+       End If
+       If( sending_data ) Then
+          Call mpi_wait( request, MPI_STATUS_IGNORE, error )
+       End If
+       ! Now on root of parent bcast back to all
+       Call mpi_bcast( buff_recv, 2, MPI_INTEGER, 0, A%parent_communicator, error )
+       ks_root = buff_recv( 1 )
+       nb      = buff_recv( 2 )
+       ! Now know how many evals we will recv - allocate memory if haven't done so already because I don't 'own' this k point
+       If( .Not. Allocated( E( ks )%evals ) ) Then
+          Allocate( E( ks )%evals( 1:nb ) )
+       End If
+       ! And finally bcast out the values from the root node for this set of evals
+       Call mpi_sizeof( rdum, rsize, error )
+       Call mpi_type_match_size( MPI_TYPECLASS_REAL, rsize, handle, error )
+       Call mpi_bcast( E( ks )%evals, Size( E( ks )%evals ), handle, ks_root, A%parent_communicator, error )
     End Do
     
   End Subroutine ks_array_diag
@@ -604,6 +602,8 @@ Contains
 
   Subroutine ks_array_get_global_real( A, s, k, m, n, p, q, data )
 
+    Use mpi
+
     ! Need to overload for irreps
 
     Class( ks_array )              , Intent( In    ) :: A
@@ -615,8 +615,18 @@ Contains
     Integer                        , Intent( In    ) :: q
     Real( wp ), Dimension( m:, p: ), Intent(   Out ) :: data
 
-    Integer :: ks, my_ks
+    Real( wp ) :: rdum
 
+    Integer :: me_parent, me
+    Integer :: buff_send, buff_recv
+    Integer :: ks, my_ks
+    Integer :: request
+    Integer :: ks_root
+    Integer :: rsize, handle
+    Integer :: error
+
+    Logical :: sending_data
+    
     ks = A%get_ks( k, s )
     
     my_ks = A%get_my_ks_index( ks )
@@ -625,12 +635,38 @@ Contains
        Call A%my_k_points( my_ks )%data( 1 )%matrix%get_by_global( m, n, p, q, data )
     End If
 
-    !TODO
     ! Need to replicate data over parent communicator if split ks points
+    
+    ! Work out who holds this set of evals and send how many there are
+    ! the root node of the communicator holding them back to the root node of the parent communicator
+    Call mpi_comm_rank( A%parent_communicator, me_parent, error )
+    sending_data = .False.
+    If( my_ks /= NOT_ME ) Then
+       Call mpi_comm_rank( A%my_k_points( my_ks )%communicator, me, error )
+       sending_data = me == 0
+       If( sending_data ) then
+          buff_send = me_parent
+          Call mpi_isend( buff_send, 1, MPI_INTEGER, 0, ks, A%parent_communicator, request, error )
+       End If
+    End If
+    If( me_parent == 0 ) Then
+       Call mpi_recv( buff_recv, 1, MPI_INTEGER, MPI_ANY_SOURCE, ks, A%parent_communicator, MPI_STATUS_IGNORE, error )
+    End If
+    If( sending_data ) Then
+       Call mpi_wait( request, MPI_STATUS_IGNORE, error )
+    End If
+    ! Now on root of parent bcast back to all
+    Call mpi_bcast( buff_recv, 1, MPI_INTEGER, 0, A%parent_communicator, error )
+    ks_root = buff_recv 
+    Call mpi_sizeof( rdum, rsize, error )
+    Call mpi_type_match_size( MPI_TYPECLASS_REAL, rsize, handle, error )
+    Call mpi_bcast( data, Size( data ), handle, ks_root, A%parent_communicator, error )    
 
   End Subroutine ks_array_get_global_real
 
   Subroutine ks_array_get_global_complex( A, s, k, m, n, p, q, data )
+
+    Use mpi
 
     ! Need to overload for irreps
 
@@ -643,8 +679,18 @@ Contains
     Integer                           , Intent( In    ) :: q
     Complex( wp ), Dimension( m:, p: ), Intent(   Out ) :: data
 
-    Integer :: ks, my_ks
+    Complex( wp ) :: cdum
 
+    Integer :: me_parent, me
+    Integer :: buff_send, buff_recv
+    Integer :: ks, my_ks
+    Integer :: request
+    Integer :: ks_root
+    Integer :: rsize, handle
+    Integer :: error
+
+    Logical :: sending_data
+    
     ks = A%get_ks( k, s )
     
     my_ks = A%get_my_ks_index( ks )
@@ -653,8 +699,32 @@ Contains
        Call A%my_k_points( my_ks )%data( 1 )%matrix%get_by_global( m, n, p, q, data )
     End If
 
-    !TODO
     ! Need to replicate data over parent communicator if split ks points
+    
+    ! Work out who holds this set of evals and send how many there are
+    ! the root node of the communicator holding them back to the root node of the parent communicator
+    Call mpi_comm_rank( A%parent_communicator, me_parent, error )
+    sending_data = .False.
+    If( my_ks /= NOT_ME ) Then
+       Call mpi_comm_rank( A%my_k_points( my_ks )%communicator, me, error )
+       sending_data = me == 0
+       If( sending_data ) then
+          buff_send = me_parent
+          Call mpi_isend( buff_send, 1, MPI_INTEGER, 0, ks, A%parent_communicator, request, error )
+       End If
+    End If
+    If( me_parent == 0 ) Then
+       Call mpi_recv( buff_recv, 1, MPI_INTEGER, MPI_ANY_SOURCE, ks, A%parent_communicator, MPI_STATUS_IGNORE, error )
+    End If
+    If( sending_data ) Then
+       Call mpi_wait( request, MPI_STATUS_IGNORE, error )
+    End If
+    ! Now on root of parent bcast back to all
+    Call mpi_bcast( buff_recv, 1, MPI_INTEGER, 0, A%parent_communicator, error )
+    ks_root = buff_recv 
+    Call mpi_sizeof( cdum, rsize, error )
+    Call mpi_type_match_size( MPI_TYPECLASS_COMPLEX, rsize, handle, error )
+    Call mpi_bcast( data, Size( data ), handle, ks_root, A%parent_communicator, error )    
 
   End Subroutine ks_array_get_global_complex
 

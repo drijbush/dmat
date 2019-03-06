@@ -805,25 +805,23 @@ Contains
 
   Subroutine test_ks_array_diag()
 
-    ! Assume ns=1 for moment
+    Integer, Parameter :: ns = 2
+    Integer, Parameter :: nk = 3
 
-    Integer, Parameter :: ns = 1
-    Integer, Parameter :: nk = 2
-
-    Type( ks_array ) :: A
+    Type( ks_array ) :: A, A_split
     Type( ks_array ) :: Q
     Type( ks_array ) :: QT
     Type( ks_array ) :: B
     
-    Type( eval_storage ), Dimension( 1:nk ) :: E
+    Type( eval_storage ), Dimension( 1:nk * ns ) :: E
     
     Type( distributed_k_matrix ) :: base_k
 
-    Complex( wp ), Dimension( :, :, : ), Allocatable :: A_global_c
+    Complex( wp ), Dimension( :, :, :, : ), Allocatable :: A_global_c
     Complex( wp ), Dimension( :, :    ), Allocatable :: tmp_c
     Complex( wp ), Dimension( : )      , Allocatable :: cwork
 
-    Real( wp ), Dimension( :, :, : ), Allocatable :: A_global_r
+    Real( wp ), Dimension( :, :, :, : ), Allocatable :: A_global_r
     Real( wp ), Dimension( :, :    ), Allocatable :: tmp_r
     Real( wp ), Dimension( : )      , Allocatable :: rwork, ev
 
@@ -837,80 +835,88 @@ Contains
     Integer :: i
     Integer :: error
 
-    !HHAAACCCKKK while assume ns = 1
-    s = 1
-
-    Allocate( A_global_r( 1:n, 1:n, 1:nk ) )
+    Allocate( A_global_r( 1:n, 1:n, 1:nk, 1:ns ) )
     Call Random_number( A_global_r )
-    Do k = 1, nk
-       A_global_r( :, :, k ) = A_global_r( :, :, k ) + Transpose( A_global_r( :, :, k  ) )
+    Do s = 1, ns
+       Do k = 1, nk
+          A_global_r( :, :, k, s ) = A_global_r( :, :, k, s ) + Transpose( A_global_r( :, :, k, s  ) )
+       End Do
     End Do
-
-    Allocate( A_global_c( 1:n, 1:n, 1:nk ) )
+       
+    Allocate( A_global_c( 1:n, 1:n, 1:nk, 1:ns ) )
     Allocate( tmp_r( 1:n, 1:n ) )
     Allocate( tmp_c( 1:n, 1:n ) )
-    Do k = 1, nk
-       Call Random_number( tmp_r )
-       A_global_c( :, :, k ) = tmp_r
-       Call Random_number( tmp_r )
-       A_global_c( :, :, k ) = A_global_c( :, :, k ) + Cmplx( 0.0_wp, tmp_r, Kind = wp )
-       A_global_c( :, :, k ) = A_global_c( :, :, k ) + Conjg( Transpose( A_global_c( :, :, k  ) ) )
+    Do s = 1, ns
+       Do k = 1, nk
+          Call Random_number( tmp_r )
+          A_global_c( :, :, k, s ) = tmp_r
+          Call Random_number( tmp_r )
+          A_global_c( :, :, k, s ) = A_global_c( :, :, k, s ) + Cmplx( 0.0_wp, tmp_r, Kind = wp )
+          A_global_c( :, :, k, s ) = A_global_c( :, :, k, s ) + Conjg( Transpose( A_global_c( :, :, k, s  ) ) )
+       End Do
     End Do
-
-    Call ks_array_init( MPI_COMM_WORLD, base_k )
 
     Do k = 1, nk
        k_points( :, k ) = [ k - 1, 0, 0 ]
        Call Random_number( rand )
        k_types( k ) = Merge( K_POINT_REAL, K_POINT_COMPLEX, rand > 0.5_wp )
     End Do
+
+    Call ks_array_init( MPI_COMM_WORLD, base_k )
+
     Call A%create( ns, k_types, k_points, n, n, base_k )
     Call A%print_info( 200 )
-    Call A%split_ks( 2.0_wp, B, .False. )
-    Call B%print_info( 100 )
-    Call mpi_finalize( error )
-    Stop
-    Do k = 1, nk
-       If( k_types( k ) == K_POINT_REAL ) Then
-          Call A%set_by_global( s, k_points( :, k ), 1, n, 1, n, A_global_r( :, :, k ) )
-       Else
-          Call A%set_by_global( s, k_points( :, k ), 1, n, 1, n, A_global_c( :, :, k ) )
-       End If
+    Do s = 1, ns
+       Do k = 1, nk
+          If( k_types( k ) == K_POINT_REAL ) Then
+             Call A%set_by_global( s, k_points( :, k ), 1, n, 1, n, A_global_r( :, :, k, s ) )
+          Else
+             Call A%set_by_global( s, k_points( :, k ), 1, n, 1, n, A_global_c( :, :, k, s ) )
+          End If
+       End Do
     End Do
 
-    Call A%diag( Q, E )
+    Call A%split_ks( 2.0_wp, A_split )
+    Call A_split%print_info( 100 )
+
+    Call A_split%diag( Q, E )
     QT = .Dagger. Q
-    B = QT * A * Q
+    B = QT * A_split * Q
+    Call B%print_info( 100 )
 
     Allocate( cwork( 1:64 * n ) )
     Allocate( rwork( 1:64 * n ) )
     Allocate( ev( 1:n ) )
-    Do k = 1, nk
-       tmp_r = 0.0_wp
-       If( k_types( k ) == K_POINT_REAL ) Then
-          Call dsyev( 'v', 'l', n, A_global_r( :, :, k ), n, ev, rwork, Size( rwork ), error )
-          Call B%get_by_global( s, k_points( :, k ), 1, n, 1, n, tmp_r )
-          Do i = 1, n
-             tmp_r( i, i ) = Abs( tmp_r( i, i ) - E( k )%evals( i ) )
-          End Do
-       Else
-          Call zheev( 'v', 'l', n, A_global_c( :, :, k ), n, ev, cwork, Size( cwork ), rwork, error )
-          Call B%get_by_global( s, k_points( :, k ), 1, n, 1, n, tmp_c )
-          Do i = 1, n
-             tmp_r( i, i ) = Abs( tmp_c( i, i ) - E( k )%evals( i ) )
-          End Do
-       End If
-       If( rank == 0 ) Then
+    Do s = 1, ns
+       Do k = 1, nk
+          tmp_r = 0.0_wp
           If( k_types( k ) == K_POINT_REAL ) Then
-             Write( *, '( a, t64, g24.16, 1x, a, i0 )' ) 'Diagk :Real    Case:             :Max absolute eval diff : ', &
-                  Maxval( Abs( E( k )%evals - ev ) ), 'k = ', k
-             Write( *, '( a, t64, g24.16 )' ) 'Diagk :Real    Case:             :Max sim tran trace test: ', Maxval( Abs( tmp_r ) )
+             Call dsyev( 'v', 'l', n, A_global_r( :, :, k, s ), n, ev, rwork, Size( rwork ), error )
+             Call B%get_by_global( s, k_points( :, k ), 1, n, 1, n, tmp_r )
+             Do i = 1, n
+                tmp_r( i, i ) = Abs( tmp_r( i, i ) - E( k + ( s - 1 ) * nk )%evals( i ) )
+             End Do
           Else
-             Write( *, '( a, t64, g24.16, 1x, a, i0 )' ) 'Diagk :Complex Case:             :Max absolute eval diff : ', &
-                  Maxval( Abs( E( k )%evals - ev ) ), 'k = ', k
-             Write( *, '( a, t64, g24.16 )' ) 'Diagk :Complex Case:             :Max sim tran trace test: ', Maxval( Abs( tmp_r ) )
+             Call zheev( 'v', 'l', n, A_global_c( :, :, k, s ), n, ev, cwork, Size( cwork ), rwork, error )
+             Call B%get_by_global( s, k_points( :, k ), 1, n, 1, n, tmp_c )
+             Do i = 1, n
+                tmp_r( i, i ) = Abs( tmp_c( i, i ) - E( k + ( s - 1 ) * nk )%evals( i ) )
+             End Do
           End If
-       End If
+          If( rank == 0 ) Then
+             If( k_types( k ) == K_POINT_REAL ) Then
+                Write( *, '( a, t64, g24.16, 1x, a, i0, a, i0 )' ) &
+                     'Diagk :Real    Case:             :Max absolute eval diff : ', &
+                     Maxval( Abs( E( k + ( s - 1 ) * nk )%evals - ev ) ), 'k = ', k, ' s = ', s
+                Write( *, '( a, t64, g24.16 )' ) &
+                     'Diagk :Real    Case:             :Max sim tran trace test: ', Maxval( Abs( tmp_r ) )
+             Else
+                Write( *, '( a, t64, g24.16, 1x, a, i0, a, i0 )' ) 'Diagk :Complex Case:             :Max absolute eval diff : ', &
+                     Maxval( Abs( E( k + ( s - 1 ) * nk )%evals - ev ) ), 'k = ', k, ' s = ', s
+                Write( *, '( a, t64, g24.16 )' ) &
+                     'Diagk :Complex Case:             :Max sim tran trace test: ', Maxval( Abs( tmp_r ) )
+             End If
+          End If
 !!$       trace = 0.0_wp
 !!$       Do i = 1, n
 !!$          trace = trace + A_global_r( i, i, k )
@@ -918,6 +924,7 @@ Contains
 !!$       If( rank == 0 ) Then
 !!$          Write( *, * ) k, E( k )%evals( 1:Min( 4, n ) ), Sum( E( k )%evals ), trace, Sum( E( k )%evals ) - trace
 !!$       End If
+       End Do
     End Do
     
     Call ks_array_finalise
