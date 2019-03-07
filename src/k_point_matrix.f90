@@ -144,19 +144,25 @@ Contains
     
   End Subroutine ks_array_create
 
-  Subroutine ks_array_print_info( A, verbosity )
+  Subroutine ks_array_print_info( A, name, verbosity )
 
     Use mpi
 
-    Class( ks_array     ), Intent( In ) :: A
-    Integer, Optional    , Intent( In ) :: verbosity
+    Class( ks_array     ),           Intent( In ) :: A
+    Character( Len = * ) , Optional, Intent( In ) :: name
+    Integer              , Optional, Intent( In ) :: verbosity
 
     Integer, Dimension( : ), Allocatable :: this_comm_ranks
+    Integer, Dimension( : ), Allocatable :: packed_ranks
     
     Integer :: me, nproc
     Integer :: error
     Integer :: n_ks
+    Integer :: n_packed_ranks
     Integer :: ks, my_ks
+    Integer :: i
+
+    Logical :: in_range
 
     Call MPI_Comm_rank( A%parent_communicator, me   , error )
     Call MPI_Comm_size( A%parent_communicator, nproc, error )
@@ -165,12 +171,16 @@ Contains
     
     If( me == 0 ) Then
        Write( *, * )
-       Write( *, '( a )' ) 'Information on a ks_array'
+       If( Present( name ) ) Then
+          Write( *, '( a, a )' ) 'Information on ks_array ', name
+       Else
+          Write( *, '( a )' ) 'Information on a ks_array'
+       End If
        Write( *, '( a )' ) 'This ks array holds the following spins and k points'
        Write( *, '( a, t10, a, t30, a )' ) 'Spin', 'Indices', 'Data Type'
        Do ks = 1, n_ks
-          Write( *, '( i0, t10, "( ", i2, ", ", i2, ", ", i2, " )", t30, a )' )    &
-               A%all_k_point_info( ks )%spin, A%all_k_point_info( ks )%k_indices,   &
+          Write( *, '( i0, t10, "( ", i2, ", ", i2, ", ", i2, " )", t30, a )' )               &
+               A%all_k_point_info( ks )%spin, A%all_k_point_info( ks )%k_indices,             &
                Merge( 'Real   ', 'Complex', A%all_k_point_info( ks )%k_type == K_POINT_REAL )
        End Do
     End If
@@ -178,12 +188,12 @@ Contains
     ! Print Which procs hold which k point
     If( Present( verbosity ) ) Then
        If( verbosity > 99 ) Then
-          Allocate( this_comm_ranks( 0:nproc - 1 ) )
           If( me == 0 ) Then
              Write( *, '( a )' ) 'The ranks within the parent communicator map onto the k points as below:'
           End If
           ! For each k point in turn work out who owns it
           Do ks = 1, n_ks
+             Allocate( this_comm_ranks( 0:nproc - 1 ) )
              this_comm_ranks = 0
              my_ks = A%get_my_ks_index( ks )
              If( my_ks /= NOT_ME ) Then
@@ -192,15 +202,43 @@ Contains
              Call MPI_Allreduce( MPI_IN_PLACE, this_comm_ranks, Size( this_comm_ranks ), &
                   MPI_INTEGER, MPI_SUM, A%parent_communicator, error )
              If( me == 0 ) Then
-                Write( *, '( i0, t10, "( ", i2, ", ", i2, ", ", i2, " )", 3x, 99999( i0, 1x ) )' )    &
-                     A%all_k_point_info( ks )%spin, A%all_k_point_info( ks )%k_indices, &
-                     Pack( this_comm_ranks - 1, this_comm_ranks /= 0 )
+                n_packed_ranks = Size( Pack( this_comm_ranks - 1, this_comm_ranks /= 0 ) )
+                Allocate( packed_ranks( 0:n_packed_ranks  -1 ) )
+                packed_ranks = Pack( this_comm_ranks - 1, this_comm_ranks /= 0 )
+                Write( *, '( i0, t10, "( ", i2, ", ", i2, ", ", i2, " )", 3x )', Advance = 'No' )    &
+                     A%all_k_point_info( ks )%spin, A%all_k_point_info( ks )%k_indices
+                Write( *, '( i0 )', Advance = 'No' ) packed_ranks( 0 )
+                If( Size( packed_ranks ) > 1 ) Then
+                   in_range = .False.
+                   Do i = Lbound( packed_ranks, Dim = 1 ) + 1, Ubound( packed_ranks, Dim = 1 ) - 1
+                      If( packed_ranks( i ) - packed_ranks( i - 1 ) == 1 ) Then
+                         If( .Not. in_range ) Then
+                            Write( *, '( "-" )', Advance = 'No' )
+                         End If
+                         in_range = .True.
+                      Else
+                         If( in_range ) Then
+                            Write( *, '( i0, ",", i0 )', Advance = 'No' ) &
+                                 packed_ranks( i - 1 ), packed_ranks( i )
+                            in_range = .False.
+                         Else
+                            Write( *, '( ",", i0, "," )', Advance = 'No' ) packed_ranks( i - 1 )
+                         End If
+                      End If
+                   End Do
+                   If( in_range ) Then
+                      Write( *, '( i0 )' ) packed_ranks( i )
+                   Else
+                      Write( *, '( ",", i0 )' ) packed_ranks( i )
+                   End If
+                   Deallocate( packed_ranks )
+                End If
              End If
+             Deallocate( this_comm_ranks )
           End Do
           If( me == 0 ) Then
              Write( *, * )
           End If
-          Deallocate( this_comm_ranks )
        End If
     End If
     

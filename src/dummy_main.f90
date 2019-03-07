@@ -865,7 +865,7 @@ Contains
     Call ks_array_init( MPI_COMM_WORLD, base_k )
 
     Call A%create( ns, k_types, k_points, n, n, base_k )
-    Call A%print_info( 200 )
+    Call A%print_info( 'A', 200 )
     Do s = 1, ns
        Do k = 1, nk
           If( k_types( k ) == K_POINT_REAL ) Then
@@ -877,12 +877,12 @@ Contains
     End Do
 
     Call A%split_ks( 2.0_wp, A_split )
-    Call A_split%print_info( 100 )
+    Call A_split%print_info( 'A_split', 100 )
 
     Call A_split%diag( Q, E )
     QT = .Dagger. Q
     B = QT * A_split * Q
-    Call B%print_info( 100 )
+    Call B%print_info( 'B', 100 )
 
     Allocate( cwork( 1:64 * n ) )
     Allocate( rwork( 1:64 * n ) )
