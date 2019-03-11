@@ -9,6 +9,9 @@ Module ks_matrix_module
   Implicit None
 
   Type, Private :: k_point_matrix
+     ! Should drop this spin and this_k_point in final implementation and
+     ! only store in level above. But does no major harm so leave as going to
+     ! rewrite anyway
      Integer                                 , Private :: this_spin
      Integer, Dimension( 1:3 )               , Private :: this_k_point
      Class( distributed_matrix ), Allocatable, Private :: matrix
