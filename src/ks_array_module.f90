@@ -80,14 +80,54 @@ Contains
     Call ks_matrix_init
   End Subroutine ks_array_init
 
-  Subroutine ks_array_comm_to_base( comm, base_matrix )
+  Subroutine ks_array_comm_to_base( comm, n_spin, k_point_type, k_points, base_ks_array )
 
     ! Want to think about what kind of thing is returned here ...
     
-    Integer                        , Intent( In    ) :: comm
-    Type   ( ks_matrix ), Intent(   Out ) :: base_matrix
+    Integer                   , Intent( In    ) :: comm
+    Integer                   , Intent( In    ) :: n_spin
+    Integer, Dimension( :    ), Intent( In    ) :: k_point_type
+    Integer, Dimension( :, : ), Intent( In    ) :: k_points
+    Type( ks_array )          , Intent(   Out ) :: base_ks_array
+
+    Type( ks_matrix ) :: base_matrix
+    
+    Integer :: n_k_points
+    Integer :: s, k, ks
+    
+    n_k_points = Size( k_point_type)
+
+    ! Set up the all k point data structure
+    Allocate( base_ks_array%all_k_point_info( 1:n_spin * n_k_points ) )
+    ks = 0
+    Do s = 1, n_spin
+       Do k = 1, n_k_points
+          ks = ks + 1
+          base_ks_array%all_k_point_info( ks )%k_type    = k_point_type( k )
+          base_ks_array%all_k_point_info( ks )%spin      = s
+          base_ks_array%all_k_point_info( ks )%k_indices = k_points( :, k )
+       End Do
+    End Do
 
     Call ks_matrix_comm_to_base( comm, base_matrix ) 
+
+    ! Now my k points
+    Allocate( base_ks_array%my_k_points( 1:n_spin * n_k_points ) )
+    ks = 0
+    Do s = 1, n_spin
+       Do k = 1, n_k_points
+          ks = ks + 1
+          base_ks_array%my_k_points( ks )%info%k_type    = k_point_type( k )
+          base_ks_array%my_k_points( ks )%info%spin      = s
+          base_ks_array%my_k_points( ks )%info%k_indices = k_points( :, k )
+          Allocate( base_ks_array%my_k_points( ks )%data( 1:1 ) )
+          base_ks_array%my_k_points( ks )%data( 1 )%label = 1
+          base_ks_array%my_k_points( ks )%data( 1 )%matrix = base_matrix
+          base_ks_array%my_k_points( ks )%communicator = base_matrix%get_comm()
+       End Do
+    End Do
+
+    base_ks_array%parent_communicator = base_matrix%get_comm()
 
   End Subroutine ks_array_comm_to_base
 
@@ -97,55 +137,43 @@ Contains
     
   End Subroutine ks_array_finalise
 
-  Subroutine ks_array_create( matrices, n_spin, k_point_type, k_points, m, n, source )
+  Subroutine ks_array_create( A, m, n, source )
 
+    ! M and N should be arrays!!!!!!!
+    
     ! Create a matrix in all k point mode with no irreps parallelism
     
     ! Also want to think about what kind of object should be used as a source
     
-    Class( ks_array )              , Intent(   Out ) :: matrices
-    Integer                        , Intent( In    ) :: n_spin
-    Integer, Dimension( :    )     , Intent( In    ) :: k_point_type
-    Integer, Dimension( :, : )     , Intent( In    ) :: k_points
-    Integer                        , Intent( In    ) :: m
-    Integer                        , Intent( In    ) :: n
-    Type ( ks_matrix   ), Intent( In    ) :: source
+    Class( ks_array ), Intent(   Out ) :: A
+    Integer          , Intent( In    ) :: m
+    Integer          , Intent( In    ) :: n
+    Type ( ks_array ), Intent( In    ) :: source
 
-    Integer :: n_k_points
-    Integer :: s, k, ks
+    Integer :: n_all_ks, n_my_ks
+    Integer :: ks
     
-    n_k_points = Size( k_point_type)
-
     ! Set up the all k point data structure
-    Allocate( matrices%all_k_point_info( 1:n_spin * n_k_points ) )
-    ks = 0
-    Do s = 1, n_spin
-       Do k = 1, n_k_points
-          ks = ks + 1
-          matrices%all_k_point_info( ks )%k_type    = k_point_type( k )
-          matrices%all_k_point_info( ks )%spin      = s
-          matrices%all_k_point_info( ks )%k_indices = k_points( :, k )
-       End Do
-    End Do
+    n_all_ks = Size( source%all_k_point_info )
+    Allocate( A%all_k_point_info( 1:n_all_ks ) )
+    A%all_k_point_info = source%all_k_point_info
 
     ! Now my k points
-    Allocate( matrices%my_k_points( 1:n_spin * n_k_points ) )
-    ks = 0
-    Do s = 1, n_spin
-       Do k = 1, n_k_points
-          ks = ks + 1
-          matrices%my_k_points( ks )%info%k_type    = k_point_type( k )
-          matrices%my_k_points( ks )%info%spin      = s
-          matrices%my_k_points( ks )%info%k_indices = k_points( :, k )
-          Allocate( matrices%my_k_points( ks )%data( 1:1 ) )
-          matrices%my_k_points( ks )%data( 1 )%label = 1
-          Call matrices%my_k_points( ks )%data( 1 )%matrix%create( k_point_type( k ) == K_POINT_COMPLEX, &
-               s, k_points( :, k ), m, n, source )
-          matrices%my_k_points( ks )%communicator = source%get_comm()
-       End Do
+    n_my_ks = Size( source%my_k_points )
+    Allocate( A%my_k_points( 1:n_my_ks ) )
+    Do ks = 1, n_my_ks
+       A%my_k_points( ks )%info = source%my_k_points( ks )%info
+          Allocate( A%my_k_points( ks )%data( 1:1 ) )
+          A%my_k_points( ks )%data( 1 )%label = 1
+          Call A%my_k_points( ks )%data( 1 )%matrix%create( &
+               A%my_k_points( ks )%info%k_type == K_POINT_COMPLEX, &
+               A%my_k_points( ks )%info%spin,                      &
+               A%my_k_points( ks )%info%k_indices,                 &
+               m, n, source%my_k_points( ks )%data( 1 )%matrix )
+          A%my_k_points( ks )%communicator = source%my_k_points( ks )%communicator 
     End Do
 
-    matrices%parent_communicator = source%get_comm()
+    A%parent_communicator = source%parent_communicator
     
   End Subroutine ks_array_create
 

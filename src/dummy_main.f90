@@ -815,7 +815,7 @@ Contains
     
     Type( eval_storage ), Dimension( 1:nk * ns ) :: E
     
-    Type( ks_matrix ) :: base_k
+    Type( ks_array ) :: base_k
 
     Complex( wp ), Dimension( :, :, :, : ), Allocatable :: A_global_c
     Complex( wp ), Dimension( :, :    ), Allocatable :: tmp_c
@@ -864,9 +864,9 @@ Contains
     End Do
 
     Call ks_array_init
-    Call ks_array_comm_to_base( MPI_COMM_WORLD, base_k )
+    Call ks_array_comm_to_base( MPI_COMM_WORLD, ns, k_types, k_points, base_k )
 
-    Call A%create( ns, k_types, k_points, n, n, base_k )
+    Call A%create( n, n, base_k )
     Call A%print_info( 'A', 200 )
     Do s = 1, ns
        Do k = 1, nk
