@@ -77,6 +77,7 @@ Module ks_array_module
      Procedure                     :: set_to_identity      => ks_array_set_to_identity
      Procedure                     :: global_to_local      => ks_array_g_to_l
      Procedure                     :: local_to_global      => ks_array_l_to_g
+     Procedure                     :: size                 => ks_array_size
   End type ks_array
   
   Type, Public :: eval_storage
@@ -1106,9 +1107,9 @@ Contains
     Integer, Dimension( : ), Allocatable :: gl_indexing
 
     Class( ks_array )          , Intent( In ) :: A
-    Character( Len = * )       , Intent( In ) :: what
     Integer                    , Intent( In ) :: s
     Integer    , Dimension( : ), Intent( In ) :: k
+    Character( Len = * )       , Intent( In ) :: what
 
     Integer :: ks, my_ks
 
@@ -1118,6 +1119,9 @@ Contains
 
     If( my_ks /= NOT_ME ) Then
        gl_indexing = A%my_k_points( my_ks )%data( 1 )%matrix%global_to_local( what )
+       Where( gl_indexing <= 0 )
+          gl_indexing = NOT_ME
+       End Where
     End If
 
   End Function ks_array_g_to_l
@@ -1127,9 +1131,9 @@ Contains
     Integer, Dimension( : ), Allocatable :: lg_indexing
 
     Class( ks_array )          , Intent( In ) :: A
-    Character( Len = * )       , Intent( In ) :: what
     Integer                    , Intent( In ) :: s
     Integer    , Dimension( : ), Intent( In ) :: k
+    Character( Len = * )       , Intent( In ) :: what
 
     Integer :: ks, my_ks
 
@@ -1142,5 +1146,32 @@ Contains
     End If
 
   End Function ks_array_l_to_g
+
+  Function ks_array_size( A, k, s, dim ) Result( n )
+
+    Integer :: n
+
+    Class( ks_array )          , Intent( In )           :: A
+    Integer                    , Intent( In )           :: s
+    Integer    , Dimension( : ), Intent( In )           :: k
+    Integer                    , Intent( In ), Optional :: dim
+
+    Integer :: ks, my_ks
+
+    ks = A%get_ks( k, s )
+    
+    my_ks = A%get_my_ks_index( ks )
+
+    If( my_ks /= NOT_ME ) Then
+       If( .Not. Present( dim ) ) Then
+          n = A%my_k_points( my_ks )%data( 1 )%matrix%size()
+       Else
+          n = A%my_k_points( my_ks )%data( 1 )%matrix%size( dim )
+       End If
+    Else
+       n = NOT_ME
+    End If
+
+  End Function ks_array_size
 
 End Module ks_array_module
