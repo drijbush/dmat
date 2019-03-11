@@ -75,6 +75,8 @@ Module ks_array_module
      Procedure                     :: Choleski             => ks_array_Choleski
      Procedure                     :: solve                => ks_array_solve
      Procedure                     :: set_to_identity      => ks_array_set_to_identity
+     Procedure                     :: global_to_local      => ks_array_g_to_l
+     Procedure                     :: local_to_global      => ks_array_l_to_g
   End type ks_array
   
   Type, Public :: eval_storage
@@ -1098,5 +1100,47 @@ Contains
     Call mpi_bcast( data, Size( data ), handle, ks_root, A%parent_communicator, error )    
 
   End Subroutine ks_array_get_global_complex
+
+  Function ks_array_g_to_l( A, k, s, what ) Result( gl_indexing )
+
+    Integer, Dimension( : ), Allocatable :: gl_indexing
+
+    Class( ks_array )          , Intent( In ) :: A
+    Character( Len = * )       , Intent( In ) :: what
+    Integer                    , Intent( In ) :: s
+    Integer    , Dimension( : ), Intent( In ) :: k
+
+    Integer :: ks, my_ks
+
+    ks = A%get_ks( k, s )
+    
+    my_ks = A%get_my_ks_index( ks )
+
+    If( my_ks /= NOT_ME ) Then
+       gl_indexing = A%my_k_points( my_ks )%data( 1 )%matrix%global_to_local( what )
+    End If
+
+  End Function ks_array_g_to_l
+
+  Function ks_array_l_to_g( A, k, s, what ) Result( lg_indexing )
+
+    Integer, Dimension( : ), Allocatable :: lg_indexing
+
+    Class( ks_array )          , Intent( In ) :: A
+    Character( Len = * )       , Intent( In ) :: what
+    Integer                    , Intent( In ) :: s
+    Integer    , Dimension( : ), Intent( In ) :: k
+
+    Integer :: ks, my_ks
+
+    ks = A%get_ks( k, s )
+    
+    my_ks = A%get_my_ks_index( ks )
+
+    If( my_ks /= NOT_ME ) Then
+       lg_indexing = A%my_k_points( my_ks )%data( 1 )%matrix%local_to_global( what )
+    End If
+
+  End Function ks_array_l_to_g
 
 End Module ks_array_module
