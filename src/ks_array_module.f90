@@ -5,7 +5,7 @@ Module ks_array_module
   ! Currently assume 1 - i.e. nosymada
   
   Use numbers_module  , Only : wp
-  Use ks_matrix_module, Only : ks_matrix_comm_to_base, &
+  Use ks_matrix_module, Only : ks_matrix_init, ks_matrix_comm_to_base, &
        ks_matrix_finalise, ks_matrix_remap_data, ks_matrix
 
   Implicit None
@@ -68,12 +68,17 @@ Module ks_array_module
      Real( wp ), Dimension( : ), Allocatable :: evals
   End type eval_storage
 
-  Private
-
+  Public :: ks_array_init
   Public :: ks_array_comm_to_base
   Public :: ks_array_finalise
   
+  Private
+
 Contains
+
+  Subroutine ks_array_init
+    Call ks_matrix_init
+  End Subroutine ks_array_init
 
   Subroutine ks_array_comm_to_base( comm, base_matrix )
 

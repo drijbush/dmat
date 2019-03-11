@@ -2,7 +2,7 @@ Module matrix_mapping_module
 
   Use numbers_module     , Only : wp
   Use mpi
-  Use proc_mapping_module, Only : proc_mapping, proc_mapping_comm_to_base, proc_mapping_finalise
+  Use proc_mapping_module, Only : proc_mapping, proc_mapping_init, proc_mapping_comm_to_base, proc_mapping_finalise
   
   Implicit None
 
@@ -20,6 +20,7 @@ Module matrix_mapping_module
 
   Integer, Parameter, Private :: INVALID = -1
 
+  Public :: matrix_mapping_init
   Public :: matrix_mapping_comm_to_base
   Public :: matrix_mapping_finalise
   
@@ -37,6 +38,10 @@ Module matrix_mapping_module
   Integer, Parameter, Private :: lld_a   = 9 ! leading dimension of LOCAL a
 
 Contains
+
+  Subroutine matrix_mapping_init
+    Call proc_mapping_init
+  End Subroutine matrix_mapping_init
 
   Subroutine matrix_mapping_comm_to_base( comm, mapping )
 

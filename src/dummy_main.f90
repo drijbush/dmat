@@ -863,6 +863,7 @@ Contains
 !!$       k_types( k ) = K_POINT_COMPLEX
     End Do
 
+    Call ks_array_init
     Call ks_array_comm_to_base( MPI_COMM_WORLD, base_k )
 
     Call A%create( ns, k_types, k_points, n, n, base_k )

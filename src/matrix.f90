@@ -6,7 +6,8 @@ Module distributed_matrix_module
   
   Use numbers_module       , Only : wp
   Use Scalapack_interfaces 
-  Use matrix_mapping_module, Only : matrix_mapping, matrix_mapping_comm_to_base, matrix_mapping_finalise
+  Use matrix_mapping_module, Only : matrix_mapping, &
+       matrix_mapping_init, matrix_mapping_comm_to_base, matrix_mapping_finalise
 
   
   Implicit None
@@ -105,6 +106,7 @@ Module distributed_matrix_module
      Generic              :: extract              => extract_c
   End type complex_distributed_matrix
 
+  Public :: distributed_matrix_init
   Public :: distributed_matrix_comm_to_base
   Public :: distributed_matrix_finalise
   Public :: distributed_matrix_set_default_blocking
@@ -124,6 +126,9 @@ Module distributed_matrix_module
 
   
 Contains
+
+  Subroutine distributed_matrix_init
+  End Subroutine distributed_matrix_init
 
   Subroutine distributed_matrix_comm_to_base( comm, base_matrix )
 
