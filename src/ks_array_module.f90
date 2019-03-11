@@ -43,41 +43,44 @@ Module ks_array_module
      ! Want to hide eventually
      Integer                                           :: parent_communicator = INVALID
    Contains
+     ! Public Methods
      Procedure                     :: create               => ks_array_create
      Procedure                     :: split_ks             => ks_array_split_ks
-     Procedure                     :: diag                 => ks_array_diag
      Procedure                     :: print_info           => ks_array_print_info
+     Generic                       :: Operator( .Dagger. ) => dagger
+     Generic                       :: Operator( + )        => add, pre_add_diag, post_add_diag
+     Generic                       :: Operator( - )        => subtract, post_subtract_diag
+     Generic                       :: Operator( * )        => multiply, pre_scale, post_scale, &
+                                                              pre_mult_diag, post_mult_diag
+     Procedure                     :: diag                 => ks_array_diag
+     Procedure                     :: Choleski             => ks_array_Choleski
+     Procedure                     :: solve                => ks_array_solve
+     Procedure                     :: set_to_identity      => ks_array_set_to_identity
+     Generic                       :: set_by_global        => set_by_global_r, set_by_global_c
+     Generic                       :: get_by_global        => get_by_global_r, get_by_global_c
+     Procedure                     :: global_to_local      => ks_array_g_to_l
+     Procedure                     :: local_to_global      => ks_array_l_to_g
+     Procedure                     :: size                 => ks_array_size
+     Procedure                     :: extract              => ks_array_extract
+     ! Private implementations
      Procedure, Private            :: get_all_ks_index
      Procedure, Private            :: get_my_ks_index
      Procedure, Private            :: get_ks
      Procedure, Private            :: set_by_global_r      => ks_array_set_global_real
      Procedure, Private            :: set_by_global_c      => ks_array_set_global_complex
-     Generic                       :: set_by_global        => set_by_global_r, set_by_global_c
      Procedure, Private            :: get_by_global_r      => ks_array_get_global_real
      Procedure, Private            :: get_by_global_c      => ks_array_get_global_complex
-     Generic                       :: get_by_global        => get_by_global_r, get_by_global_c
      Procedure, Private            :: multiply             => ks_array_mult
      Procedure, Private, Pass( A ) :: pre_scale            => ks_array_pre_scale
      Procedure, Private            :: post_scale           => ks_array_post_scale
      Procedure, Private, Pass( A ) :: pre_mult_diag        => ks_array_pre_mult_diag
      Procedure, Private            :: post_mult_diag       => ks_array_post_mult_diag
-     Generic                       :: Operator( * )        => multiply, pre_scale, post_scale, &
-                                                              pre_mult_diag, post_mult_diag
      Procedure, Private            :: dagger               => ks_array_dagger
-     Generic                       :: Operator( .Dagger. ) => dagger
      Procedure, Private            :: add                  => ks_array_add
      Procedure, Private, Pass( A ) :: pre_add_diag         => ks_array_pre_add_diag
      Procedure, Private            :: post_add_diag        => ks_array_post_add_diag
-     Generic                       :: Operator( + )        => add, pre_add_diag, post_add_diag
      Procedure, Private            :: subtract             => ks_array_subtract
      Procedure, Private            :: post_subtract_diag   => ks_array_post_subtract_diag
-     Generic                       :: Operator( - )        => subtract, post_subtract_diag
-     Procedure                     :: Choleski             => ks_array_Choleski
-     Procedure                     :: solve                => ks_array_solve
-     Procedure                     :: set_to_identity      => ks_array_set_to_identity
-     Procedure                     :: global_to_local      => ks_array_g_to_l
-     Procedure                     :: local_to_global      => ks_array_l_to_g
-     Procedure                     :: size                 => ks_array_size
   End type ks_array
   
   Type, Public :: eval_storage
@@ -99,8 +102,6 @@ Contains
   End Subroutine ks_array_init
 
   Subroutine ks_array_comm_to_base( comm, n_spin, k_point_type, k_points, base_ks_array )
-
-    ! Want to think about what kind of thing is returned here ...
     
     Integer                   , Intent( In    ) :: comm
     Integer                   , Intent( In    ) :: n_spin
@@ -157,7 +158,8 @@ Contains
 
   Subroutine ks_array_create( A, m, n, source )
 
-    ! M and N should be arrays!!!!!!!
+    ! M and N should be arrays to allow different sizes at each ks point,
+    ! or more likely irrep!!!!!!!!
     
     ! Create a matrix in all k point mode with no irreps parallelism
     
@@ -1173,5 +1175,34 @@ Contains
     End If
 
   End Function ks_array_size
+
+  Function ks_array_extract( A, r1, r2, c1, c2 ) Result( C )
+
+    Type( ks_array ), Allocatable :: C
+
+    Class( ks_array ), Intent( In ) :: A
+    ! Do we want the indices on the patches to be arrays so each ks point
+    ! can extract a different patch??
+    Integer          , Intent( In ) :: r1 
+    Integer          , Intent( In ) :: r2
+    Integer          , Intent( In ) :: c1 
+    Integer          , Intent( In ) :: c2
+    
+    Integer :: my_ks, my_irrep
+
+    Allocate( C )
+    C = A
+    
+    Do my_ks = 1, Size( A%my_k_points )
+       ! Irreps will need more thought - work currenly as burnt into as 1
+       Do my_irrep = 1, Size( A%my_k_points( my_ks )%data )
+          Associate( Aks => A%my_k_points( my_ks )%data( my_irrep )%matrix, &
+                     Cks => C%my_k_points( my_ks )%data( my_irrep )%matrix )
+            Cks = Aks%extract( r1, r2, c1, c2 )
+          End Associate
+       End Do
+    End Do
+
+  End Function ks_array_extract
 
 End Module ks_array_module

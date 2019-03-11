@@ -20,47 +20,49 @@ Module ks_matrix_module
   Type, Public :: ks_matrix
      Type( k_point_matrix ), Allocatable, Private :: k_point
    Contains
-     Procedure            :: create               => ks_matrix_create
-     Procedure            :: dagger               => ks_matrix_dagger
-     Generic              :: Operator( .Dagger. ) => dagger
-     Procedure            :: diag                 => ks_matrix_diag
-     Procedure            :: multiply             => ks_matrix_mult
-     Generic              :: Operator( * )        => multiply
-     Procedure            :: post_scale           => ks_matrix_post_scale
-     Procedure, Pass( A ) :: pre_scale            => ks_matrix_pre_scale
-     Generic              :: Operator( * )        => post_scale, pre_scale
-     Procedure            :: post_mult_diag       => ks_matrix_post_mult_diag
-     Procedure, Pass( A ) :: pre_mult_diag        => ks_matrix_pre_mult_diag
-     Generic              :: Operator( * )        => pre_mult_diag, post_mult_diag
-     Procedure            :: add                  => ks_matrix_add
-     Procedure, Pass( A ) :: pre_add_diag         => ks_matrix_pre_add_diag
-     Procedure            :: post_add_diag        => ks_matrix_post_add_diag
-     Generic              :: Operator( + )        => add, post_add_diag, pre_add_diag
-     Procedure            :: subtract             => ks_matrix_subtract
-     Generic              :: Operator( - )        => subtract
-     Procedure            :: post_subtract_diag   => ks_matrix_post_subtract_diag
-     Generic              :: Operator( - )        => post_subtract_diag
-     Procedure            :: Choleski             => ks_matrix_Choleski
-     Procedure            :: Solve                => ks_matrix_Solve
-     Procedure            :: set_to_identity      => ks_matrix_set_to_identity
-     Procedure, Private   :: sgr                  => set_global_real
-     Procedure, Private   :: sgc                  => set_global_complex
-     Generic              :: set_by_global        => sgr, sgc
-     Procedure, Private   :: slr                  => set_local_real
-     Procedure, Private   :: slc                  => set_local_complex
-     Generic              :: set_by_local         => slr, slc
-     Procedure, Private   :: ggr                  => get_global_real
-     Procedure, Private   :: ggc                  => get_global_complex
-     Generic              :: get_by_global        => ggr, ggc
-     Procedure, Private   :: glr                  => get_local_real
-     Procedure, Private   :: glc                  => get_local_complex
-     Generic              :: get_by_local         => glr, glc
-     Procedure            :: extract              => ks_matrix_extract
-     Procedure            :: global_to_local      => ks_matrix_g_to_l
-     Procedure            :: local_to_global      => ks_matrix_l_to_g
-     Procedure            :: local_size           => ks_matrix_local_size
-     Procedure            :: size                 => ks_matrix_size
-     Procedure            :: get_comm             => ks_matrix_get_communicator
+     ! Public methods
+     Procedure                     :: create               => ks_matrix_create
+     Generic                       :: Operator( .Dagger. ) => dagger
+     Procedure                     :: diag                 => ks_matrix_diag
+     Generic                       :: Operator( * )        => multiply
+     Generic                       :: Operator( * )        => post_scale, pre_scale
+     Generic                       :: Operator( * )        => pre_mult_diag, post_mult_diag
+     Generic                       :: Operator( + )        => add, post_add_diag, pre_add_diag
+     Generic                       :: Operator( - )        => subtract
+     Generic                       :: Operator( - )        => post_subtract_diag
+     Procedure                     :: Choleski             => ks_matrix_Choleski
+     Procedure                     :: Solve                => ks_matrix_Solve
+     Procedure                     :: set_to_identity      => ks_matrix_set_to_identity
+     Generic                       :: set_by_global        => sgr, sgc
+     Generic                       :: set_by_local         => slr, slc
+     Generic                       :: get_by_global        => ggr, ggc
+     Generic                       :: get_by_local         => glr, glc
+     Procedure                     :: extract              => ks_matrix_extract
+     Procedure                     :: global_to_local      => ks_matrix_g_to_l
+     Procedure                     :: local_to_global      => ks_matrix_l_to_g
+     Procedure                     :: local_size           => ks_matrix_local_size
+     Procedure                     :: size                 => ks_matrix_size
+     Procedure                     :: get_comm             => ks_matrix_get_communicator
+     ! Private implementations
+     Procedure, Private            :: dagger               => ks_matrix_dagger
+     Procedure, Private            :: multiply             => ks_matrix_mult
+     Procedure, Private            :: post_scale           => ks_matrix_post_scale
+     Procedure, Private, Pass( A ) :: pre_scale            => ks_matrix_pre_scale
+     Procedure, Private            :: post_mult_diag       => ks_matrix_post_mult_diag
+     Procedure, Private, Pass( A ) :: pre_mult_diag        => ks_matrix_pre_mult_diag
+     Procedure, Private            :: add                  => ks_matrix_add
+     Procedure, Private, Pass( A ) :: pre_add_diag         => ks_matrix_pre_add_diag
+     Procedure, Private            :: post_add_diag        => ks_matrix_post_add_diag
+     Procedure, Private            :: subtract             => ks_matrix_subtract
+     Procedure, Private            :: post_subtract_diag   => ks_matrix_post_subtract_diag
+     Procedure, Private            :: sgr                  => set_global_real
+     Procedure, Private            :: sgc                  => set_global_complex
+     Procedure, Private            :: slr                  => set_local_real
+     Procedure, Private            :: slc                  => set_local_complex
+     Procedure, Private            :: ggr                  => get_global_real
+     Procedure, Private            :: ggc                  => get_global_complex
+     Procedure, Private            :: glr                  => get_local_real
+     Procedure, Private            :: glc                  => get_local_complex
   End Type ks_matrix
 
   ! Method for k point //ism
