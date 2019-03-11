@@ -588,7 +588,7 @@ Contains
           Associate( Aks => A%my_k_points( my_ks )%data( my_irrep )%matrix, &
                      Bks => B%my_k_points( my_ks )%data( my_irrep )%matrix, &
                      Cks => C%my_k_points( my_ks )%data( my_irrep )%matrix )
-            Cks = Aks * Bks
+            Cks = Aks + Bks
           End Associate
        End Do
     End Do
