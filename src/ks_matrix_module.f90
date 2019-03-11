@@ -21,27 +21,28 @@ Module ks_matrix_module
      Type( k_point_matrix ), Allocatable, Private :: k_point
    Contains
      ! Public methods
+     ! Methods at all levels
      Procedure                     :: create               => ks_matrix_create
      Generic                       :: Operator( .Dagger. ) => dagger
-     Procedure                     :: diag                 => ks_matrix_diag
+     Generic                       :: Operator( + )        => add, post_add_diag, pre_add_diag
+     Generic                       :: Operator( - )        => subtract, post_subtract_diag
      Generic                       :: Operator( * )        => multiply
      Generic                       :: Operator( * )        => post_scale, pre_scale
      Generic                       :: Operator( * )        => pre_mult_diag, post_mult_diag
-     Generic                       :: Operator( + )        => add, post_add_diag, pre_add_diag
-     Generic                       :: Operator( - )        => subtract
-     Generic                       :: Operator( - )        => post_subtract_diag
+     Procedure                     :: diag                 => ks_matrix_diag
      Procedure                     :: Choleski             => ks_matrix_Choleski
-     Procedure                     :: Solve                => ks_matrix_Solve
+     Procedure                     :: solve                => ks_matrix_Solve
      Procedure                     :: set_to_identity      => ks_matrix_set_to_identity
-     Generic                       :: set_by_global        => sgr, sgc
-     Generic                       :: set_by_local         => slr, slc
-     Generic                       :: get_by_global        => ggr, ggc
-     Generic                       :: get_by_local         => glr, glc
      Procedure                     :: extract              => ks_matrix_extract
+     Generic                       :: set_by_global        => sgr, sgc
+     Generic                       :: get_by_global        => ggr, ggc
      Procedure                     :: global_to_local      => ks_matrix_g_to_l
      Procedure                     :: local_to_global      => ks_matrix_l_to_g
-     Procedure                     :: local_size           => ks_matrix_local_size
      Procedure                     :: size                 => ks_matrix_size
+     ! Methods only at this level
+     Procedure                     :: local_size           => ks_matrix_local_size
+     Generic                       :: set_by_local         => slr, slc
+     Generic                       :: get_by_local         => glr, glc     
      Procedure                     :: get_comm             => ks_matrix_get_communicator
      ! Private implementations
      Procedure, Private            :: dagger               => ks_matrix_dagger

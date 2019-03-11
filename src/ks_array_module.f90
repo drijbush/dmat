@@ -44,9 +44,8 @@ Module ks_array_module
      Integer                                           :: parent_communicator = INVALID
    Contains
      ! Public Methods
+     ! Methods at all levels
      Procedure                     :: create               => ks_array_create
-     Procedure                     :: split_ks             => ks_array_split_ks
-     Procedure                     :: print_info           => ks_array_print_info
      Generic                       :: Operator( .Dagger. ) => dagger
      Generic                       :: Operator( + )        => add, pre_add_diag, post_add_diag
      Generic                       :: Operator( - )        => subtract, post_subtract_diag
@@ -62,6 +61,9 @@ Module ks_array_module
      Procedure                     :: local_to_global      => ks_array_l_to_g
      Procedure                     :: size                 => ks_array_size
      Procedure                     :: extract              => ks_array_extract
+     ! Methods only at this level
+     Procedure                     :: split_ks             => ks_array_split_ks
+     Procedure                     :: print_info           => ks_array_print_info
      ! Private implementations
      Procedure, Private            :: get_all_ks_index
      Procedure, Private            :: get_my_ks_index
