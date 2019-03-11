@@ -4,7 +4,7 @@ Module ks_matrix_module
 
   Use numbers_module           , Only : wp
   Use distributed_matrix_module, Only : distributed_matrix, real_distributed_matrix, complex_distributed_matrix, &
-       distributed_matrix_init, distributed_matrix_finalise, distributed_matrix_remap_data
+       distributed_matrix_comm_to_base, distributed_matrix_finalise, distributed_matrix_remap_data
   Implicit None
 
   Type, Private :: k_point_matrix
@@ -63,7 +63,7 @@ Module ks_matrix_module
   ! a) Set up base matrix which is 1 matrix across all
   ! b) Provide splits
 
-  Public :: ks_matrix_init
+  Public :: ks_matrix_comm_to_base
   Public :: ks_matrix_finalise
   Public :: ks_matrix_remap_data
   
@@ -73,7 +73,7 @@ Module ks_matrix_module
 
 Contains
 
-  Subroutine ks_matrix_init( comm, base_matrix )
+  Subroutine ks_matrix_comm_to_base( comm, base_matrix )
 
     Integer                        , Intent( In    ) :: comm
     Type   ( ks_matrix ), Intent(   Out ) :: base_matrix
@@ -85,9 +85,9 @@ Contains
 
     Allocate( real_distributed_matrix:: base_matrix%k_point%matrix )
 
-    Call distributed_matrix_init( comm, base_matrix%k_point%matrix )
+    Call distributed_matrix_comm_to_base( comm, base_matrix%k_point%matrix )
     
-  End Subroutine ks_matrix_init
+  End Subroutine ks_matrix_comm_to_base
 
   Subroutine ks_matrix_finalise
 

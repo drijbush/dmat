@@ -2,7 +2,7 @@ Module matrix_mapping_module
 
   Use numbers_module     , Only : wp
   Use mpi
-  Use proc_mapping_module, Only : proc_mapping, proc_mapping_init, proc_mapping_finalise
+  Use proc_mapping_module, Only : proc_mapping, proc_mapping_comm_to_base, proc_mapping_finalise
   
   Implicit None
 
@@ -20,7 +20,7 @@ Module matrix_mapping_module
 
   Integer, Parameter, Private :: INVALID = -1
 
-  Public :: matrix_mapping_init
+  Public :: matrix_mapping_comm_to_base
   Public :: matrix_mapping_finalise
   
   Private
@@ -38,7 +38,7 @@ Module matrix_mapping_module
 
 Contains
 
-  Subroutine matrix_mapping_init( comm, mapping )
+  Subroutine matrix_mapping_comm_to_base( comm, mapping )
 
     Integer               , Intent( In    ) :: comm
     Type( matrix_mapping ), Intent(   Out ) :: mapping
@@ -47,7 +47,7 @@ Contains
 
     Integer :: context
 
-    Call proc_mapping_init( comm, proc_mapping_base )
+    Call proc_mapping_comm_to_base( comm, proc_mapping_base )
 
     Call get_context_from_comm( comm, context )
 
@@ -57,7 +57,7 @@ Contains
          INVALID, INVALID, &
          INVALID )
     
-  End Subroutine matrix_mapping_init
+  End Subroutine matrix_mapping_comm_to_base
 
   Subroutine matrix_mapping_finalise
 

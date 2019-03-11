@@ -6,7 +6,7 @@ Module distributed_matrix_module
   
   Use numbers_module       , Only : wp
   Use Scalapack_interfaces 
-  Use matrix_mapping_module, Only : matrix_mapping, matrix_mapping_init, matrix_mapping_finalise
+  Use matrix_mapping_module, Only : matrix_mapping, matrix_mapping_comm_to_base, matrix_mapping_finalise
 
   
   Implicit None
@@ -105,7 +105,7 @@ Module distributed_matrix_module
      Generic              :: extract              => extract_c
   End type complex_distributed_matrix
 
-  Public :: distributed_matrix_init
+  Public :: distributed_matrix_comm_to_base
   Public :: distributed_matrix_finalise
   Public :: distributed_matrix_set_default_blocking
   Public :: distributed_matrix_remap_data
@@ -125,14 +125,14 @@ Module distributed_matrix_module
   
 Contains
 
-  Subroutine distributed_matrix_init( comm, base_matrix )
+  Subroutine distributed_matrix_comm_to_base( comm, base_matrix )
 
     Integer                      , Intent( In    ) :: comm
     Class  ( distributed_matrix ), Intent(   Out ) :: base_matrix 
 
     Type( matrix_mapping ) :: base_matrix_mapping
     
-    Call matrix_mapping_init( comm, base_matrix_mapping )
+    Call matrix_mapping_comm_to_base( comm, base_matrix_mapping )
 
     base_matrix%matrix_map = base_matrix_mapping
     base_matrix%global_to_local_rows = [ distributed_matrix_INVALID ]
@@ -140,7 +140,7 @@ Contains
     base_matrix%local_to_global_rows = [ distributed_matrix_INVALID ]
     base_matrix%local_to_global_cols = [ distributed_matrix_INVALID ]
     
-  End Subroutine distributed_matrix_init
+  End Subroutine distributed_matrix_comm_to_base
 
   Subroutine distributed_matrix_finalise
 
@@ -1563,7 +1563,7 @@ Contains
     End If
     
     ! Generate a context fron the parent_communicator
-    Call matrix_mapping_init( parent_comm, mapping )
+    Call matrix_mapping_comm_to_base( parent_comm, mapping )
     Call mapping%get_data( ctxt = parent_ctxt )
 
     m = -1
@@ -1639,7 +1639,7 @@ Contains
     End If
     
     ! Generate a context fron the parent_communicator
-    Call matrix_mapping_init( parent_comm, mapping )
+    Call matrix_mapping_comm_to_base( parent_comm, mapping )
     Call mapping%get_data( ctxt = parent_ctxt )
 
     m = -1

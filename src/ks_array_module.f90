@@ -5,7 +5,7 @@ Module ks_array_module
   ! Currently assume 1 - i.e. nosymada
   
   Use numbers_module  , Only : wp
-  Use ks_matrix_module, Only : ks_matrix_init, &
+  Use ks_matrix_module, Only : ks_matrix_comm_to_base, &
        ks_matrix_finalise, ks_matrix_remap_data, ks_matrix
 
   Implicit None
@@ -70,21 +70,21 @@ Module ks_array_module
 
   Private
 
-  Public :: ks_array_init
+  Public :: ks_array_comm_to_base
   Public :: ks_array_finalise
   
 Contains
 
-  Subroutine ks_array_init( comm, base_matrix )
+  Subroutine ks_array_comm_to_base( comm, base_matrix )
 
     ! Want to think about what kind of thing is returned here ...
     
     Integer                        , Intent( In    ) :: comm
     Type   ( ks_matrix ), Intent(   Out ) :: base_matrix
 
-    Call ks_matrix_init( comm, base_matrix ) 
+    Call ks_matrix_comm_to_base( comm, base_matrix ) 
 
-  End Subroutine ks_array_init
+  End Subroutine ks_array_comm_to_base
 
   Subroutine ks_array_finalise
 
@@ -298,6 +298,8 @@ Contains
     Do ks = 1, n_ks
        weights( ks ) = Merge( 1.0_wp, complex_weight, split_A%all_k_point_info( ks )%k_type == K_POINT_REAL )
     End Do
+    ! Makes a difference if somehow somebody has all k points complex
+    weights = weights / Minval( weights )
 
     !THIS WHOLE SPLITTING STRATEGY PROBABLY NEEDS MORE THOUGHT
     Call MPI_Comm_size( split_A%parent_communicator, n_procs_parent, error )
@@ -374,7 +376,7 @@ Contains
        this_s         = split_A%all_k_point_info( my_ks( ks ) )%spin
        this_k_indices = split_A%all_k_point_info( my_ks( ks ) )%k_indices
        ! Now need to generate a source matrix from the communicator - precisely what the init routine does!!
-       Call ks_matrix_init( k_comm, base_matrix )
+       Call ks_matrix_comm_to_base( k_comm, base_matrix )
        ! Need to get sizes for creation
        m = A%my_k_points( my_ks( ks ) )%data( 1 )%matrix%size( 1 )
        n = A%my_k_points( my_ks( ks ) )%data( 1 )%matrix%size( 2 )

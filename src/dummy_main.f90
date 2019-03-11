@@ -31,7 +31,7 @@ Program dummy_main
   Call mpi_bcast( nb, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, error )
   
   Call distributed_matrix_set_default_blocking( nb )
-  Call distributed_matrix_init( MPI_COMM_WORLD, base_matrix )
+  Call distributed_matrix_comm_to_base( MPI_COMM_WORLD, base_matrix )
 
   Call test_matmul_real()
   Call test_matmul_real_ops() 
@@ -393,7 +393,7 @@ Contains
     Call random_number( A_global )
     A_global = A_global + Transpose( A_global )
     
-    Call ks_matrix_init( MPI_COMM_WORLD, base_k )
+    Call ks_matrix_comm_to_base( MPI_COMM_WORLD, base_k )
     
     Call A%create( .False., 1, [ 0, 0, 0 ], n, n, base_k )
     Call A%set_by_global( 1, n, 1, n, A_global )
@@ -456,7 +456,7 @@ Contains
     A_global = A_global + Cmplx( 0.0_wp, rtmp, wp )
     A_global = A_global + Conjg( Transpose( A_global ) )
     
-    Call ks_matrix_init( MPI_COMM_WORLD, base_k )
+    Call ks_matrix_comm_to_base( MPI_COMM_WORLD, base_k )
     
     Call A%create( .True., 1, [ 0, 0, 0 ], n, n, base_k )
     Call A%set_by_global( 1, n, 1, n, A_global )
@@ -521,7 +521,7 @@ Contains
     End Do
     A_global = Matmul( A_global_nm, Transpose( A_global_nm ) )
     
-    Call ks_matrix_init( MPI_COMM_WORLD, base_k )
+    Call ks_matrix_comm_to_base( MPI_COMM_WORLD, base_k )
     
     Call A_nm%create( .False., 1, [ 0, 0, 0 ], n, m, base_k )
     Call A_nm%set_by_global( 1, n, 1, m, A_global_nm )
@@ -588,7 +588,7 @@ Contains
     A_global = A_global + Cmplx( 0.0_wp, rtmp, wp )
     A_global = A_global + Conjg( Transpose( A_global ) )
     
-    Call ks_matrix_init( MPI_COMM_WORLD, base_k )
+    Call ks_matrix_comm_to_base( MPI_COMM_WORLD, base_k )
     
     Call A%create( .True., 1, [ 0, 0, 0 ], n, n, base_k )
     Call A%set_by_global( 1, n, 1, n, A_global )
@@ -648,7 +648,7 @@ Contains
        A_global( i, i ) = A_global( i, i ) + Real( n, kind = wp )
     End Do
     
-    Call ks_matrix_init( MPI_COMM_WORLD, base_k )
+    Call ks_matrix_comm_to_base( MPI_COMM_WORLD, base_k )
     
     Call A%create( .False., 1, [ 0, 0, 0 ], n, n, base_k )
     Call A%set_by_global( 1, n, 1, n, A_global )
@@ -704,7 +704,7 @@ Contains
        A_global( i, i ) = A_global( i, i ) + Cmplx( n, kind = wp )
     End Do
     
-    Call ks_matrix_init( MPI_COMM_WORLD, base_k )
+    Call ks_matrix_comm_to_base( MPI_COMM_WORLD, base_k )
     
     Call A%create( .True., 1, [ 0, 0, 0 ], n, n, base_k )
     Call A%set_by_global( 1, n, 1, n, A_global )
@@ -762,7 +762,7 @@ Contains
     End Do
     S_global = Matmul( Transpose( S_global ), S_global )
     
-    Call ks_matrix_init( MPI_COMM_WORLD, base_k )
+    Call ks_matrix_comm_to_base( MPI_COMM_WORLD, base_k )
     
     Call S%create( .False., 1, [ 0, 0, 0 ], n, n, base_k )
     Call S%set_by_global( 1, n, 1, n, S_global )
@@ -860,9 +860,10 @@ Contains
        k_points( :, k ) = [ k - 1, 0, 0 ]
        Call Random_number( rand )
        k_types( k ) = Merge( K_POINT_REAL, K_POINT_COMPLEX, rand > 0.5_wp )
+!!$       k_types( k ) = K_POINT_COMPLEX
     End Do
 
-    Call ks_array_init( MPI_COMM_WORLD, base_k )
+    Call ks_array_comm_to_base( MPI_COMM_WORLD, base_k )
 
     Call A%create( ns, k_types, k_points, n, n, base_k )
     Call A%print_info( 'A', 200 )

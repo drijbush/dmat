@@ -19,7 +19,7 @@ Module proc_mapping_module
      Generic  , Public  :: split => split_proc_mapping
   End Type proc_mapping
 
-  Public :: proc_mapping_init
+  Public :: proc_mapping_comm_to_base
   Public :: proc_mapping_finalise
   
   Private
@@ -28,7 +28,7 @@ Module proc_mapping_module
 
 Contains
 
-  Subroutine proc_mapping_init( comm, mapping )
+  Subroutine proc_mapping_comm_to_base( comm, mapping )
 
     Integer             , Intent( In ) :: comm
     Type( proc_mapping ), Intent(   Out ) :: mapping
@@ -39,7 +39,7 @@ Contains
 
     Call mapping%set( 'BASE_MAP', comm, parent_communicator )
     
-  End Subroutine proc_mapping_init
+  End Subroutine proc_mapping_comm_to_base
 
   Subroutine proc_mapping_finalise
     
