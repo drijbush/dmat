@@ -373,12 +373,12 @@ Contains
 
   Subroutine test_diag_k_real()
 
-    Type( distributed_k_matrix ) :: A
-    Type( distributed_k_matrix ) :: Q
+    Type( ks_matrix ) :: A
+    Type( ks_matrix ) :: Q
     Real( wp ), Dimension( : )  , Allocatable :: E
 
-    Type( distributed_k_matrix ) :: QT, B, C
-    Type( distributed_k_matrix ) :: base_k
+    Type( ks_matrix ) :: QT, B, C
+    Type( ks_matrix ) :: base_k
     
     Real( wp ), Dimension( :, : ), Allocatable :: A_global
     Real( wp ), Dimension( :, : ), Allocatable :: tmp
@@ -393,7 +393,7 @@ Contains
     Call random_number( A_global )
     A_global = A_global + Transpose( A_global )
     
-    Call distributed_k_matrix_init( MPI_COMM_WORLD, base_k )
+    Call ks_matrix_init( MPI_COMM_WORLD, base_k )
     
     Call A%create( .False., 1, [ 0, 0, 0 ], n, n, base_k )
     Call A%set_by_global( 1, n, 1, n, A_global )
@@ -406,7 +406,7 @@ Contains
     Do i = 1, n
        tmp( i, i ) = tmp( i, i ) - E( i )
     End Do
-    Call distributed_k_matrix_finalise
+    Call ks_matrix_finalise
     
     Allocate( work( 1:64 * n ) )
     Allocate( ev( 1:n ) )
@@ -427,12 +427,12 @@ Contains
 
   Subroutine test_diag_k_complex()
 
-    Type( distributed_k_matrix )              :: A
-    Type( distributed_k_matrix )              :: Q
+    Type( ks_matrix )              :: A
+    Type( ks_matrix )              :: Q
     Real( wp ), Dimension( : )  , Allocatable :: E
     
-    Type( distributed_k_matrix ) :: QT, B, C
-    Type( distributed_k_matrix ) :: base_k
+    Type( ks_matrix ) :: QT, B, C
+    Type( ks_matrix ) :: base_k
 
     Complex( wp ), Dimension( :, : ), Allocatable :: A_global
     Complex( wp ), Dimension( :, : ), Allocatable :: tmp
@@ -456,7 +456,7 @@ Contains
     A_global = A_global + Cmplx( 0.0_wp, rtmp, wp )
     A_global = A_global + Conjg( Transpose( A_global ) )
     
-    Call distributed_k_matrix_init( MPI_COMM_WORLD, base_k )
+    Call ks_matrix_init( MPI_COMM_WORLD, base_k )
     
     Call A%create( .True., 1, [ 0, 0, 0 ], n, n, base_k )
     Call A%set_by_global( 1, n, 1, n, A_global )
@@ -470,7 +470,7 @@ Contains
     Do i = 1, n
        tmp( i, i ) = tmp( i, i ) - E( i )
     End Do
-    Call distributed_k_matrix_finalise
+    Call ks_matrix_finalise
 
     Allocate( cwork( 1:64 * n ) )
     Allocate( rwork( 1:3 * n - 2 ) )
@@ -492,13 +492,13 @@ Contains
 
   Subroutine test_diag_k_real_nm()
 
-    Type( distributed_k_matrix ) :: A_nm
-    Type( distributed_k_matrix ) :: A_nn
-    Type( distributed_k_matrix ) :: Q
+    Type( ks_matrix ) :: A_nm
+    Type( ks_matrix ) :: A_nn
+    Type( ks_matrix ) :: Q
     Real( wp ), Dimension( : )  , Allocatable :: E
 
-    Type( distributed_k_matrix ) :: QT, B, C
-    Type( distributed_k_matrix ) :: base_k
+    Type( ks_matrix ) :: QT, B, C
+    Type( ks_matrix ) :: base_k
     
     Real( wp ), Dimension( :, : ), Allocatable :: A_global_nm
     Real( wp ), Dimension( :, : ), Allocatable :: A_global
@@ -521,7 +521,7 @@ Contains
     End Do
     A_global = Matmul( A_global_nm, Transpose( A_global_nm ) )
     
-    Call distributed_k_matrix_init( MPI_COMM_WORLD, base_k )
+    Call ks_matrix_init( MPI_COMM_WORLD, base_k )
     
     Call A_nm%create( .False., 1, [ 0, 0, 0 ], n, m, base_k )
     Call A_nm%set_by_global( 1, n, 1, m, A_global_nm )
@@ -535,7 +535,7 @@ Contains
     Do i = 1, n
        tmp( i, i ) = tmp( i, i ) - E( i )
     End Do
-    Call distributed_k_matrix_finalise
+    Call ks_matrix_finalise
     
     Allocate( work( 1:64 * n ) )
     Allocate( ev( 1:n ) )
@@ -556,12 +556,12 @@ Contains
 
   Subroutine test_diag_extract_complex()
 
-    Type( distributed_k_matrix )              :: A
-    Type( distributed_k_matrix )              :: Q
+    Type( ks_matrix )              :: A
+    Type( ks_matrix )              :: Q
     Real( wp ), Dimension( : )  , Allocatable :: E
     
-    Type( distributed_k_matrix ) :: Qe, QeT, B, C
-    Type( distributed_k_matrix ) :: base_k
+    Type( ks_matrix ) :: Qe, QeT, B, C
+    Type( ks_matrix ) :: base_k
 
     Complex( wp ), Dimension( :, : ), Allocatable :: A_global
     Complex( wp ), Dimension( :, : ), Allocatable :: tmp
@@ -588,7 +588,7 @@ Contains
     A_global = A_global + Cmplx( 0.0_wp, rtmp, wp )
     A_global = A_global + Conjg( Transpose( A_global ) )
     
-    Call distributed_k_matrix_init( MPI_COMM_WORLD, base_k )
+    Call ks_matrix_init( MPI_COMM_WORLD, base_k )
     
     Call A%create( .True., 1, [ 0, 0, 0 ], n, n, base_k )
     Call A%set_by_global( 1, n, 1, n, A_global )
@@ -605,7 +605,7 @@ Contains
     Do i = 1, m
        tmp( i, i ) = tmp( i, i ) - E( i )
     End Do
-    Call distributed_k_matrix_finalise
+    Call ks_matrix_finalise
 
     Allocate( cwork( 1:64 * n ) )
     Allocate( rwork( 1:3 * n - 2 ) )
@@ -628,10 +628,10 @@ Contains
 
   Subroutine test_cholsk_real()
 
-    Type( distributed_k_matrix ) :: A
-    Type( distributed_k_matrix ) :: B
-    Type( distributed_k_matrix ) :: L, L_inv
-    Type( distributed_k_matrix ) :: base_k
+    Type( ks_matrix ) :: A
+    Type( ks_matrix ) :: B
+    Type( ks_matrix ) :: L, L_inv
+    Type( ks_matrix ) :: base_k
     
     Real( wp ), Dimension( :, : ), Allocatable :: A_global
     Real( wp ), Dimension( :, : ), Allocatable :: tmp
@@ -648,7 +648,7 @@ Contains
        A_global( i, i ) = A_global( i, i ) + Real( n, kind = wp )
     End Do
     
-    Call distributed_k_matrix_init( MPI_COMM_WORLD, base_k )
+    Call ks_matrix_init( MPI_COMM_WORLD, base_k )
     
     Call A%create( .False., 1, [ 0, 0, 0 ], n, n, base_k )
     Call A%set_by_global( 1, n, 1, n, A_global )
@@ -672,16 +672,16 @@ Contains
        Write( *, '( a, t64, g24.16 )' ) 'Invert:Real    Case:             :Max absolute diff      : ', Maxval( Abs( tmp ) )
     End If
 
-    Call distributed_k_matrix_finalise
+    Call ks_matrix_finalise
 
   End Subroutine test_cholsk_real
 
   Subroutine test_cholsk_complex()
 
-    Type( distributed_k_matrix ) :: A
-    Type( distributed_k_matrix ) :: B
-    Type( distributed_k_matrix ) :: L, L_inv
-    Type( distributed_k_matrix ) :: base_k
+    Type( ks_matrix ) :: A
+    Type( ks_matrix ) :: B
+    Type( ks_matrix ) :: L, L_inv
+    Type( ks_matrix ) :: base_k
     
     Complex( wp ), Dimension( :, : ), Allocatable :: A_global
     Complex( wp ), Dimension( :, : ), Allocatable :: tmp
@@ -704,7 +704,7 @@ Contains
        A_global( i, i ) = A_global( i, i ) + Cmplx( n, kind = wp )
     End Do
     
-    Call distributed_k_matrix_init( MPI_COMM_WORLD, base_k )
+    Call ks_matrix_init( MPI_COMM_WORLD, base_k )
     
     Call A%create( .True., 1, [ 0, 0, 0 ], n, n, base_k )
     Call A%set_by_global( 1, n, 1, n, A_global )
@@ -728,18 +728,18 @@ Contains
        Write( *, '( a, t64, g24.16 )' ) 'Invert:Complex Case:             :Max absolute diff      : ', Maxval( Abs( tmp ) )
     End If
 
-    Call distributed_k_matrix_finalise
+    Call ks_matrix_finalise
 
   End Subroutine test_cholsk_complex
 
   Subroutine test_diag_extract_real()
 
-    Type( distributed_k_matrix )              :: S
-    Type( distributed_k_matrix )              :: Q
+    Type( ks_matrix )              :: S
+    Type( ks_matrix )              :: Q
     Real( wp ), Dimension( : )  , Allocatable :: E
     
-    Type( distributed_k_matrix ) :: Qe, QeT, B, C
-    Type( distributed_k_matrix ) :: base_k
+    Type( ks_matrix ) :: Qe, QeT, B, C
+    Type( ks_matrix ) :: base_k
 
     Real( wp ), Parameter :: tol = 0.1_wp
 
@@ -762,7 +762,7 @@ Contains
     End Do
     S_global = Matmul( Transpose( S_global ), S_global )
     
-    Call distributed_k_matrix_init( MPI_COMM_WORLD, base_k )
+    Call ks_matrix_init( MPI_COMM_WORLD, base_k )
     
     Call S%create( .False., 1, [ 0, 0, 0 ], n, n, base_k )
     Call S%set_by_global( 1, n, 1, n, S_global )
@@ -784,7 +784,7 @@ Contains
     Do i = 1, ne
        tmp( i, i ) = tmp( i, i ) - E( i + start - 1 )
     End Do
-    Call distributed_k_matrix_finalise
+    Call ks_matrix_finalise
 
     Allocate( cwork( 1:64 * n ) )
     Allocate( ev( 1:n ) )
@@ -815,7 +815,7 @@ Contains
     
     Type( eval_storage ), Dimension( 1:nk * ns ) :: E
     
-    Type( distributed_k_matrix ) :: base_k
+    Type( ks_matrix ) :: base_k
 
     Complex( wp ), Dimension( :, :, :, : ), Allocatable :: A_global_c
     Complex( wp ), Dimension( :, :    ), Allocatable :: tmp_c

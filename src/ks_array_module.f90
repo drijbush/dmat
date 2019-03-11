@@ -5,8 +5,8 @@ Module ks_array_module
   ! Currently assume 1 - i.e. nosymada
   
   Use numbers_module  , Only : wp
-  Use ks_matrix_module, Only : distributed_k_matrix_init, &
-       distributed_k_matrix_finalise, distributed_k_matrix_remap_data, distributed_k_matrix
+  Use ks_matrix_module, Only : ks_matrix_init, &
+       ks_matrix_finalise, ks_matrix_remap_data, ks_matrix
 
   Implicit None
 
@@ -25,7 +25,7 @@ Module ks_array_module
   Type, Private :: k_point_matrices
      ! External label - e.g. irrep number
      Integer                      :: label = INVALID
-     Type( distributed_k_matrix ) :: matrix
+     Type( ks_matrix ) :: matrix
   End type k_point_matrices
 
   Type, Private :: k_point
@@ -80,15 +80,15 @@ Contains
     ! Want to think about what kind of thing is returned here ...
     
     Integer                        , Intent( In    ) :: comm
-    Type   ( distributed_k_matrix ), Intent(   Out ) :: base_matrix
+    Type   ( ks_matrix ), Intent(   Out ) :: base_matrix
 
-    Call distributed_k_matrix_init( comm, base_matrix ) 
+    Call ks_matrix_init( comm, base_matrix ) 
 
   End Subroutine ks_array_init
 
   Subroutine ks_array_finalise
 
-    Call distributed_k_matrix_finalise
+    Call ks_matrix_finalise
     
   End Subroutine ks_array_finalise
 
@@ -104,7 +104,7 @@ Contains
     Integer, Dimension( :, : )     , Intent( In    ) :: k_points
     Integer                        , Intent( In    ) :: m
     Integer                        , Intent( In    ) :: n
-    Type ( distributed_k_matrix   ), Intent( In    ) :: source
+    Type ( ks_matrix   ), Intent( In    ) :: source
 
     Integer :: n_k_points
     Integer :: s, k, ks
@@ -255,10 +255,10 @@ Contains
     Type ( ks_array     ), Intent(   Out ) :: split_A
     Logical, Optional    , Intent( In    ) :: redistribute
 
-    Type( distributed_k_matrix ), Allocatable :: this_ks_matrix
-    Type( distributed_k_matrix ), Allocatable :: split_ks_matrix
+    Type( ks_matrix ), Allocatable :: this_ks_matrix
+    Type( ks_matrix ), Allocatable :: split_ks_matrix
 
-    Type( distributed_k_matrix ) :: base_matrix
+    Type( ks_matrix ) :: base_matrix
 
     Real( wp ), Dimension( : ), Allocatable :: weights
 
@@ -372,7 +372,7 @@ Contains
        this_s         = split_A%all_k_point_info( my_ks( ks ) )%spin
        this_k_indices = split_A%all_k_point_info( my_ks( ks ) )%k_indices
        ! Now need to generate a source matrix from the communicator - precisely what the init routine does!!
-       Call distributed_k_matrix_init( k_comm, base_matrix )
+       Call ks_matrix_init( k_comm, base_matrix )
        ! Need to get sizes for creation
        m = A%my_k_points( my_ks( ks ) )%data( 1 )%matrix%size( 1 )
        n = A%my_k_points( my_ks( ks ) )%data( 1 )%matrix%size( 2 )
@@ -395,7 +395,7 @@ Contains
              Allocate( split_ks_matrix )
              split_ks_matrix = split_A%my_k_points( this_ks )%data( 1 )%matrix
           End If
-          Call distributed_k_matrix_remap_data( A%parent_communicator, this_ks_matrix, split_ks_matrix )
+          Call ks_matrix_remap_data( A%parent_communicator, this_ks_matrix, split_ks_matrix )
           If( this_ks /= NOT_ME ) Then
              split_A%my_k_points( this_ks )%data( 1 )%matrix = split_ks_matrix
              Deallocate( split_ks_matrix ) ! Important as an deallocated matrix indicates no data on this process in the remap routine
