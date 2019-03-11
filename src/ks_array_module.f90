@@ -72,6 +72,9 @@ Module ks_array_module
      Procedure, Private            :: subtract             => ks_array_subtract
      Procedure, Private            :: post_subtract_diag   => ks_array_post_subtract_diag
      Generic                       :: Operator( - )        => subtract, post_subtract_diag
+     Procedure                     :: Choleski             => ks_array_Choleski
+     Procedure                     :: solve                => ks_array_solve
+     Procedure                     :: set_to_identity      => ks_array_set_to_identity
   End type ks_array
   
   Type, Public :: eval_storage
@@ -797,6 +800,69 @@ Contains
     End Do
 
   End Function ks_array_post_subtract_diag
+
+  Function ks_array_Choleski( A ) Result( C )
+
+    Type( ks_array ), Allocatable :: C
+
+    Class( ks_array ), Intent( In ) :: A
+
+    Integer :: my_ks, my_irrep
+
+    Allocate( C )
+    C = A
+    
+    Do my_ks = 1, Size( A%my_k_points )
+       ! Irreps will need more thought - work currenly as burnt into as 1
+       Do my_irrep = 1, Size( A%my_k_points( my_ks )%data )
+          Associate( Aks => A%my_k_points( my_ks )%data( my_irrep )%matrix, &
+                     Cks => C%my_k_points( my_ks )%data( my_irrep )%matrix )
+            Cks = Aks%Choleski()
+          End Associate
+       End Do
+    End Do
+
+  End Function ks_array_Choleski
+
+  Function ks_array_solve( A, B ) Result( C )
+
+    Type( ks_array ), Allocatable :: C
+
+    Class( ks_array ), Intent( In ) :: A
+    Type ( ks_array ), Intent( In ) :: B
+
+    Integer :: my_ks, my_irrep
+
+    Allocate( C )
+    C = A
+    
+    Do my_ks = 1, Size( A%my_k_points )
+       ! Irreps will need more thought - work currenly as burnt into as 1
+       Do my_irrep = 1, Size( A%my_k_points( my_ks )%data )
+          Associate( Aks => A%my_k_points( my_ks )%data( my_irrep )%matrix, &
+                     Bks => B%my_k_points( my_ks )%data( my_irrep )%matrix, &
+                     Cks => C%my_k_points( my_ks )%data( my_irrep )%matrix )
+            Cks = Aks%solve( Bks )
+          End Associate
+       End Do
+    End Do
+
+  End Function ks_array_solve
+
+  Subroutine ks_array_set_to_identity( A ) 
+
+    Class( ks_array ), Intent( InOut ) :: A
+
+    Integer :: my_ks, my_irrep
+
+    Do my_ks = 1, Size( A%my_k_points )
+       ! Irreps will need more thought - work currenly as burnt into as 1
+       Do my_irrep = 1, Size( A%my_k_points( my_ks )%data )
+          Call A%my_k_points( my_ks )%data( my_irrep )%matrix%set_to_identity()
+       End Do
+    End Do
+    
+  End Subroutine ks_array_set_to_identity
 
   Pure Function get_all_ks_index( A, my_ks ) Result( ks )
 
