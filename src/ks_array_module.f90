@@ -1,11 +1,11 @@
-Module k_point_matrix_module
+Module ks_array_module
 
   ! IRREPS NEED MORE THOUGHT
   !-------------------------
   ! Currently assume 1 - i.e. nosymada
   
-  Use numbers_module      , Only : wp
-  Use distributed_k_module, Only : distributed_k_matrix_init, &
+  Use numbers_module  , Only : wp
+  Use ks_matrix_module, Only : distributed_k_matrix_init, &
        distributed_k_matrix_finalise, distributed_k_matrix_remap_data, distributed_k_matrix
 
   Implicit None
@@ -766,4 +766,4 @@ Contains
 
   End Subroutine ks_array_get_global_complex
 
-End Module k_point_matrix_module
+End Module ks_array_module

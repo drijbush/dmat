@@ -1,4 +1,4 @@
-Module distributed_k_module
+Module ks_matrix_module
 
   ! Wrapper for dist matrix types so can make opaque array - only 1 k point at this level
 
@@ -1182,5 +1182,5 @@ Contains
     
   End Function distributed_k_matrix_get_communicator
 
-End Module distributed_k_module
+End Module ks_matrix_module
 

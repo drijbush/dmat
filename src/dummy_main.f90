@@ -3,11 +3,11 @@ Program dummy_main
   Use mpi
 
   Use numbers_module, Only : wp
-  Use distributed_k_module
+  Use distributed_matrix_module
   Use proc_mapping_module
   Use matrix_mapping_module
-  Use distributed_matrix_module
-  Use k_point_matrix_module
+  Use ks_matrix_module
+  Use ks_array_module
   
   Implicit None
   
