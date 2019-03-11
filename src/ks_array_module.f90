@@ -43,25 +43,27 @@ Module ks_array_module
      ! Want to hide eventually
      Integer                                           :: parent_communicator = INVALID
    Contains
-     Procedure          :: create               => ks_array_create
-     Procedure          :: split_ks             => ks_array_split_ks
-     Procedure          :: diag                 => ks_array_diag
-     Procedure          :: print_info           => ks_array_print_info
-     Procedure, Private :: get_all_ks_index
-     Procedure, Private :: get_my_ks_index
-     Procedure, Private :: get_ks
-     Procedure, Private :: set_by_global_r      => ks_array_set_global_real
-     Procedure, Private :: set_by_global_c      => ks_array_set_global_complex
-     Generic            :: set_by_global        => set_by_global_r, set_by_global_c
-     Procedure, Private :: get_by_global_r      => ks_array_get_global_real
-     Procedure, Private :: get_by_global_c      => ks_array_get_global_complex
-     Generic            :: get_by_global        => get_by_global_r, get_by_global_c
-     Procedure          :: multiply             => ks_array_mult
-     Generic            :: Operator( * )        => multiply
-     Procedure          :: dagger               => ks_array_dagger
-     Generic            :: Operator( .Dagger. ) => dagger
-     Procedure          :: add                  => ks_array_add
-     Generic            :: Operator( + )        => add
+     Procedure                     :: create               => ks_array_create
+     Procedure                     :: split_ks             => ks_array_split_ks
+     Procedure                     :: diag                 => ks_array_diag
+     Procedure                     :: print_info           => ks_array_print_info
+     Procedure, Private            :: get_all_ks_index
+     Procedure, Private            :: get_my_ks_index
+     Procedure, Private            :: get_ks
+     Procedure, Private            :: set_by_global_r      => ks_array_set_global_real
+     Procedure, Private            :: set_by_global_c      => ks_array_set_global_complex
+     Generic                       :: set_by_global        => set_by_global_r, set_by_global_c
+     Procedure, Private            :: get_by_global_r      => ks_array_get_global_real
+     Procedure, Private            :: get_by_global_c      => ks_array_get_global_complex
+     Generic                       :: get_by_global        => get_by_global_r, get_by_global_c
+     Procedure, Private            :: multiply             => ks_array_mult
+     Procedure, Private, Pass( A ) :: pre_scale            => ks_array_pre_scale
+     Procedure, Private            :: post_scale           => ks_array_post_scale
+     Generic                       :: Operator( * )        => multiply, pre_scale, post_scale
+     Procedure, Private            :: dagger               => ks_array_dagger
+     Generic                       :: Operator( .Dagger. ) => dagger
+     Procedure, Private            :: add                  => ks_array_add
+     Generic                       :: Operator( + )        => add
   End type ks_array
   
   Type, Public :: eval_storage
@@ -569,6 +571,54 @@ Contains
     End Do
 
   End Function ks_array_mult
+
+  Function ks_array_pre_scale( s, A ) Result( C )
+
+    Type( ks_array ), Allocatable :: C
+
+    Real( wp )       , Intent( In ) :: s
+    Class( ks_array ), Intent( In ) :: A
+
+    Integer :: my_ks, my_irrep
+
+    Allocate( C )
+    C = A
+    
+    Do my_ks = 1, Size( A%my_k_points )
+       ! Irreps will need more thought - work currenly as burnt into as 1
+       Do my_irrep = 1, Size( A%my_k_points( my_ks )%data )
+          Associate( Aks => A%my_k_points( my_ks )%data( my_irrep )%matrix, &
+                     Cks => C%my_k_points( my_ks )%data( my_irrep )%matrix )
+            Cks = s * Aks
+          End Associate
+       End Do
+    End Do
+
+  End Function ks_array_pre_scale
+
+  Function ks_array_post_scale( A, s ) Result( C )
+
+    Type( ks_array ), Allocatable :: C
+
+    Class( ks_array ), Intent( In ) :: A
+    Real( wp )       , Intent( In ) :: s
+
+    Integer :: my_ks, my_irrep
+
+    Allocate( C )
+    C = A
+    
+    Do my_ks = 1, Size( A%my_k_points )
+       ! Irreps will need more thought - work currenly as burnt into as 1
+       Do my_irrep = 1, Size( A%my_k_points( my_ks )%data )
+          Associate( Aks => A%my_k_points( my_ks )%data( my_irrep )%matrix, &
+                     Cks => C%my_k_points( my_ks )%data( my_irrep )%matrix )
+            Cks = Aks * s
+          End Associate
+       End Do
+    End Do
+
+  End Function ks_array_post_scale
 
   Function ks_array_add( A, B ) Result( C )
 
