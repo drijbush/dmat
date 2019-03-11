@@ -38,8 +38,8 @@ Module ks_matrix_module
      Generic              :: Operator( + )        => add, post_add_diag, pre_add_diag
      Procedure            :: subtract             => ks_matrix_subtract
      Generic              :: Operator( - )        => subtract
-     Procedure            :: post_diag_subtract   => ks_matrix_post_diag_subtract
-     Generic              :: Operator( - )        => post_diag_subtract
+     Procedure            :: post_subtract_diag   => ks_matrix_post_subtract_diag
+     Generic              :: Operator( - )        => post_subtract_diag
      Procedure            :: Choleski             => ks_matrix_Choleski
      Procedure            :: Solve                => ks_matrix_Solve
      Procedure            :: set_to_identity      => ks_matrix_set_to_identity
@@ -492,7 +492,7 @@ Contains
 
   End Function ks_matrix_subtract
 
-  Function ks_matrix_post_diag_subtract( A, d ) Result( B )
+  Function ks_matrix_post_subtract_diag( A, d ) Result( B )
     
     Type( ks_matrix ), Allocatable :: B
 
@@ -521,7 +521,7 @@ Contains
       End Select
     End Associate
 
-  End Function ks_matrix_post_diag_subtract
+  End Function ks_matrix_post_subtract_diag
 
   Subroutine set_global_real( A, m, n, p, q, data )
     

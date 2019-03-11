@@ -70,7 +70,8 @@ Module ks_array_module
      Procedure, Private            :: post_add_diag        => ks_array_post_add_diag
      Generic                       :: Operator( + )        => add, pre_add_diag, post_add_diag
      Procedure, Private            :: subtract             => ks_array_subtract
-     Generic                       :: Operator( - )        => subtract
+     Procedure, Private            :: post_subtract_diag   => ks_array_post_subtract_diag
+     Generic                       :: Operator( - )        => subtract, post_subtract_diag
   End type ks_array
   
   Type, Public :: eval_storage
@@ -772,6 +773,30 @@ Contains
     End Do
 
   End Function ks_array_subtract
+
+  Function ks_array_post_subtract_diag( A, d ) Result( C )
+
+    Type( ks_array ), Allocatable :: C
+
+    Class( ks_array )                , Intent( In ) :: A
+    Real( wp )       , Dimension( : ), Intent( In ) :: d
+
+    Integer :: my_ks, my_irrep
+
+    Allocate( C )
+    C = A
+    
+    Do my_ks = 1, Size( A%my_k_points )
+       ! Irreps will need more thought - work currenly as burnt into as 1
+       Do my_irrep = 1, Size( A%my_k_points( my_ks )%data )
+          Associate( Aks => A%my_k_points( my_ks )%data( my_irrep )%matrix, &
+                     Cks => C%my_k_points( my_ks )%data( my_irrep )%matrix )
+            Cks = Aks - d
+          End Associate
+       End Do
+    End Do
+
+  End Function ks_array_post_subtract_diag
 
   Pure Function get_all_ks_index( A, my_ks ) Result( ks )
 
