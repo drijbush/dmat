@@ -1,10 +1,10 @@
 PROG =	dmat
 
-SRCS =	distributed_k_matrices.f90 dummy_main.f90 k_point_matrix.f90 \
+SRCS =	distributed_k_matrices.f90 dummy_main.f90 ks_array_module.f90 \
 	matrix.f90 matrix_mapping.f90 numbers.f90 proc_mapping.f90 \
 	scalapack_interfaces.f90
 
-OBJS =	distributed_k_matrices.o dummy_main.o k_point_matrix.o matrix.o \
+OBJS =	distributed_k_matrices.o dummy_main.o ks_array_module.o matrix.o \
 	matrix_mapping.o numbers.o proc_mapping.o scalapack_interfaces.o
 
 LIBS =-lblacs-openmpi -lblacsF77init-openmpi -lscalapack-openmpi -llapack -lblas
@@ -41,8 +41,8 @@ clean:
 
 distributed_k_matrices.o: matrix.o numbers.o
 dummy_main.o: distributed_k_matrices.o matrix.o matrix_mapping.o \
-	proc_mapping.o k_point_matrix.o
-k_point_matrix.o: numbers.o distributed_k_matrices.o
+	proc_mapping.o ks_array_module.o
+ks_array_module.o: numbers.o distributed_k_matrices.o
 matrix.o: matrix_mapping.o numbers.o scalapack_interfaces.o
 matrix_mapping.o: numbers.o proc_mapping.o
 proc_mapping.o:
