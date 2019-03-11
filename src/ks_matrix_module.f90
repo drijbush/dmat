@@ -13,14 +13,8 @@ Module ks_matrix_module
      Class( distributed_matrix ), Allocatable, Private :: matrix
   End Type k_point_matrix
 
-  ! WHEN TIDYING DELETE THIS - functionality gained less than complexity
-  ! introduced
-  Type, Extends( k_point_matrix ), Private :: k_wave_function
-     Real( wp ), Dimension( : ), Allocatable, Private :: evals
-  End Type k_wave_function
-
   Type, Public :: ks_matrix
-     Class( k_point_matrix ), Allocatable, Private :: k_point
+     Type( k_point_matrix ), Allocatable, Private :: k_point
    Contains
      Procedure            :: create               => ks_matrix_create
      Procedure            :: dagger               => ks_matrix_dagger
@@ -135,7 +129,7 @@ Contains
     Type(    real_distributed_matrix ), Allocatable :: Q_real
     Type( complex_distributed_matrix ), Allocatable :: Q_complex
     
-    Allocate( k_wave_function  :: Q%k_point )
+    Allocate( Q%k_point )
 
     Q%k_point%this_spin    = A%k_point%this_spin
     Q%k_point%this_k_point = A%k_point%this_k_point
@@ -159,13 +153,6 @@ Contains
 
     End Associate
 
-    Associate( Qk => Q%k_point )
-      Select Type( Qk )
-      Class is ( k_wave_function )
-         Qk%evals = evals
-      End Select
-    End Associate
-      
   End Subroutine ks_matrix_diag
   
   Function ks_matrix_dagger( A ) Result( tA )
@@ -178,16 +165,7 @@ Contains
     Type( complex_distributed_matrix ) :: tA_complex
 
     Allocate( tA )
-    Associate( Ak => A%k_point )
-      Select Type( Ak )
-      Class Default
-         Stop "Illegal type in ks_matrix_dagger"
-      Type is ( k_point_matrix )
-         Allocate( k_point_matrix :: tA%k_point )
-      Type is ( k_wave_function )
-         Allocate( k_wave_function :: tA%k_point )
-      End Select
-    End Associate
+    Allocate( tA%k_point )
     
     tA%k_point%this_spin    = A%k_point%this_spin
     tA%k_point%this_k_point = A%k_point%this_k_point
@@ -218,16 +196,7 @@ Contains
     Type( complex_distributed_matrix ) :: C_complex
 
     Allocate( C )
-    Associate( Ak => A%k_point )
-      Select Type( Ak )
-      Class Default
-         Stop "Illegal type in ks_matrix_Choleski"
-      Type is ( k_point_matrix )
-         Allocate( k_point_matrix :: C%k_point )
-      Type is ( k_wave_function )
-         Allocate( k_wave_function :: C%k_point )
-      End Select
-    End Associate
+    Allocate( C%k_point )
     
     C%k_point%this_spin    = A%k_point%this_spin
     C%k_point%this_k_point = A%k_point%this_k_point
@@ -259,16 +228,8 @@ Contains
     Type( complex_distributed_matrix ) :: C_complex
 
     Allocate( C )
-    Associate( Ak => A%k_point )
-      Select Type( Ak )
-      Class Default
-         Stop "Illegal type in ks_matrix_mult"
-      Type is ( k_point_matrix )
-         Allocate( k_point_matrix :: C%k_point )
-      Type is ( k_wave_function )
-         Allocate( k_wave_function :: C%k_point )
-      End Select
-    End Associate
+    Allocate( C%k_point )
+
     C%k_point%this_spin    = A%k_point%this_spin
     C%k_point%this_k_point = A%k_point%this_k_point
 
@@ -318,16 +279,7 @@ Contains
     Type( complex_distributed_matrix ) :: B_complex
 
     Allocate( B )
-    Associate( Ak => A%k_point )
-      Select Type( Ak )
-      Class Default
-         Stop "Illegal type in ks_matrix_post_mult_diag"
-      Type is ( k_point_matrix )
-         Allocate( k_point_matrix :: B%k_point )
-      Type is ( k_wave_function )
-         Allocate( k_wave_function :: B%k_point )
-      End Select
-    End Associate
+    Allocate( B%k_point )
     
     B%k_point%this_spin    = A%k_point%this_spin
     B%k_point%this_k_point = A%k_point%this_k_point
@@ -358,16 +310,7 @@ Contains
     Type( complex_distributed_matrix ) :: B_complex
 
     Allocate( B )
-    Associate( Ak => A%k_point )
-      Select Type( Ak )
-      Class Default
-         Stop "Illegal type in ks_matrix_pre_mult_diag"
-      Type is ( k_point_matrix )
-         Allocate( k_point_matrix :: B%k_point )
-      Type is ( k_wave_function )
-         Allocate( k_wave_function :: B%k_point )
-      End Select
-    End Associate
+    Allocate( B%k_point )
     
     B%k_point%this_spin    = A%k_point%this_spin
     B%k_point%this_k_point = A%k_point%this_k_point
@@ -398,16 +341,8 @@ Contains
     Type( complex_distributed_matrix ) :: C_complex
 
     Allocate( C )
-    Associate( Ak => A%k_point )
-      Select Type( Ak )
-      Class Default
-         Stop "Illegal type in ks_matrix_solve"
-      Type is ( k_point_matrix )
-         Allocate( k_point_matrix :: C%k_point )
-      Type is ( k_wave_function )
-         Allocate( k_wave_function :: C%k_point )
-      End Select
-    End Associate
+    Allocate( k_point_matrix :: C%k_point )
+
     C%k_point%this_spin    = A%k_point%this_spin
     C%k_point%this_k_point = A%k_point%this_k_point
 
@@ -457,16 +392,8 @@ Contains
     Type( complex_distributed_matrix ) :: C_complex
 
     Allocate( C )
-    Associate( Ak => A%k_point )
-      Select Type( Ak )
-      Class Default
-         Stop "Illegal type in ks_matrix_add"
-      Type is ( k_point_matrix )
-         Allocate( k_point_matrix :: C%k_point )
-      Type is ( k_wave_function )
-         Allocate( k_wave_function :: C%k_point )
-      End Select
-    End Associate
+    Allocate( C%k_point )
+
     C%k_point%this_spin    = A%k_point%this_spin
     C%k_point%this_k_point = A%k_point%this_k_point
 
@@ -516,16 +443,8 @@ Contains
     Type( complex_distributed_matrix ) :: C_complex
 
     Allocate( C )
-    Associate( Ak => A%k_point )
-      Select Type( Ak )
-      Class Default
-         Stop "Illegal type in ks_matrix_subtract"
-      Type is ( k_point_matrix )
-         Allocate( k_point_matrix :: C%k_point )
-      Type is ( k_wave_function )
-         Allocate( k_wave_function :: C%k_point )
-      End Select
-    End Associate
+    Allocate( C%k_point )
+
     C%k_point%this_spin    = A%k_point%this_spin
     C%k_point%this_k_point = A%k_point%this_k_point
 
@@ -575,16 +494,7 @@ Contains
     Type( complex_distributed_matrix ) :: B_complex
 
     Allocate( B )
-    Associate( Ak => A%k_point )
-      Select Type( Ak )
-      Class Default
-         Stop "Illegal type in ks_matrix_post_scale"
-      Type is ( k_point_matrix )
-         Allocate( k_point_matrix :: B%k_point )
-      Type is ( k_wave_function )
-         Allocate( k_wave_function :: B%k_point )
-      End Select
-    End Associate
+    Allocate( B%k_point )
     
     B%k_point%this_spin    = A%k_point%this_spin
     B%k_point%this_k_point = A%k_point%this_k_point
@@ -818,22 +728,7 @@ Contains
     Type( complex_distributed_matrix ) :: B_complex
 
     Allocate( B )
-    Associate( Ak => A%k_point )
-      Select Type( Ak )
-      Class Default
-         Stop "Illegal type in ks_matrix_extract"
-      Type is ( k_point_matrix )
-         Allocate( k_point_matrix :: B%k_point )
-      Type is ( k_wave_function )
-         Allocate( k_wave_function :: B%k_point )
-         Associate( Bk => B%k_point )
-!!$           Select Type( Bk )
-!!$           Type is ( k_wave_function )
-!!$              Bk%evals = Ak%evals( c1:c2 )
-!!$           End Select
-         End Associate
-      End Select
-    End Associate
+    Allocate( B%k_point )
     B%k_point%this_spin    = A%k_point%this_spin
     B%k_point%this_k_point = A%k_point%this_k_point
 
@@ -868,16 +763,7 @@ Contains
     Type( complex_distributed_matrix ) :: B_complex
 
     Allocate( B )
-    Associate( Ak => A%k_point )
-      Select Type( Ak )
-      Class Default
-         Stop "Illegal type in ks_matrix_post_scale"
-      Type is ( k_point_matrix )
-         Allocate( k_point_matrix :: B%k_point )
-      Type is ( k_wave_function )
-         Allocate( k_wave_function :: B%k_point )
-      End Select
-    End Associate
+    Allocate( B%k_point )
     
     B%k_point%this_spin    = A%k_point%this_spin
     B%k_point%this_k_point = A%k_point%this_k_point
@@ -908,16 +794,7 @@ Contains
     Type( complex_distributed_matrix ) :: B_complex
 
     Allocate( B )
-    Associate( Ak => A%k_point )
-      Select Type( Ak )
-      Class Default
-         Stop "Illegal type in ks_matrix_pre_scale"
-      Type is ( k_point_matrix )
-         Allocate( k_point_matrix :: B%k_point )
-      Type is ( k_wave_function )
-         Allocate( k_wave_function :: B%k_point )
-      End Select
-    End Associate
+    Allocate( B%k_point )
     
     B%k_point%this_spin    = A%k_point%this_spin
     B%k_point%this_k_point = A%k_point%this_k_point
@@ -948,16 +825,7 @@ Contains
     Type( complex_distributed_matrix ) :: B_complex
 
     Allocate( B )
-    Associate( Ak => A%k_point )
-      Select Type( Ak )
-      Class Default
-         Stop "Illegal type in ks_matrix_post_add_diag"
-      Type is ( k_point_matrix )
-         Allocate( k_point_matrix :: B%k_point )
-      Type is ( k_wave_function )
-         Allocate( k_wave_function :: B%k_point )
-      End Select
-    End Associate
+    Allocate( B%k_point )
     
     B%k_point%this_spin    = A%k_point%this_spin
     B%k_point%this_k_point = A%k_point%this_k_point
@@ -988,16 +856,7 @@ Contains
     Type( complex_distributed_matrix ) :: B_complex
 
     Allocate( B )
-    Associate( Ak => A%k_point )
-      Select Type( Ak )
-      Class Default
-         Stop "Illegal type in ks_matrix_pre_add_diag"
-      Type is ( k_point_matrix )
-         Allocate( k_point_matrix :: B%k_point )
-      Type is ( k_wave_function )
-         Allocate( k_wave_function :: B%k_point )
-      End Select
-    End Associate
+    Allocate( B%k_point )
     
     B%k_point%this_spin    = A%k_point%this_spin
     B%k_point%this_k_point = A%k_point%this_k_point

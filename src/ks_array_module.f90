@@ -231,8 +231,10 @@ Contains
                    Else
                       Write( *, '( ",", i0 )' ) packed_ranks( i )
                    End If
-                   Deallocate( packed_ranks )
+                Else
+                   Write( *, * )
                 End If
+                Deallocate( packed_ranks )
              End If
              Deallocate( this_comm_ranks )
           End Do
