@@ -60,6 +60,8 @@ Module ks_array_module
      Generic            :: Operator( * )        => multiply
      Procedure          :: dagger               => ks_array_dagger
      Generic            :: Operator( .Dagger. ) => dagger
+     Procedure          :: add                  => ks_array_add
+     Generic            :: Operator( + )        => add
   End type ks_array
   
   Type, Public :: eval_storage
@@ -567,6 +569,31 @@ Contains
     End Do
 
   End Function ks_array_mult
+
+  Function ks_array_add( A, B ) Result( C )
+
+    Type( ks_array ), Allocatable :: C
+
+    Class( ks_array ), Intent( In ) :: A
+    Type ( ks_array ), Intent( In ) :: B
+
+    Integer :: my_ks, my_irrep
+
+    Allocate( C )
+    C = A
+    
+    Do my_ks = 1, Size( A%my_k_points )
+       ! Irreps will need more thought - work currenly as burnt into as 1
+       Do my_irrep = 1, Size( A%my_k_points( my_ks )%data )
+          Associate( Aks => A%my_k_points( my_ks )%data( my_irrep )%matrix, &
+                     Bks => B%my_k_points( my_ks )%data( my_irrep )%matrix, &
+                     Cks => C%my_k_points( my_ks )%data( my_irrep )%matrix )
+            Cks = Aks * Bks
+          End Associate
+       End Do
+    End Do
+
+  End Function ks_array_add
 
   Pure Function get_all_ks_index( A, my_ks ) Result( ks )
 
