@@ -1110,6 +1110,8 @@ Contains
     ! the form with A NOT transposed, and then the result is indicate as requiring transposition
     ! or not as required byt this.
 
+    ! NOTE TRANSPOSES BUSTED - is PDTRAN the solution?
+
     Class( real_distributed_matrix ), Allocatable :: C
 
     Class( real_distributed_matrix ), Intent( In ) :: A
